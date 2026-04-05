@@ -538,6 +538,16 @@ class PresetEngine:
         if enable_memory and preset.selected_memory:
             memory_config = await self._get_memory_config(preset)
         
+        # 将长期记忆注入系统提示词
+        if enable_memory and session_id and preset.selected_memory:
+            memory_service = MemoryService(self.db)
+            system_prompt = await memory_service.add_memory_to_prompt(
+                session_id=session_id,
+                memory_id=preset.selected_memory,
+                base_prompt=system_prompt
+            )
+            self.logger.info(f"[PresetEngine] 已将长期记忆注入系统提示词")
+        
         # 创建初始状态
         state = create_initial_state(
             input_message=message,
@@ -551,10 +561,12 @@ class PresetEngine:
         history_messages = []
         if enable_memory and session_id:
             # 优先从记忆系统加载
+            self.logger.info(f"[PresetEngine] 加载记忆历史：session={session_id}, enable_memory={enable_memory}")
             history_messages = await self._load_conversation_history(
                 session_id, 
                 memory_config
             )
+            self.logger.info(f"[PresetEngine] 加载到 {len(history_messages)} 条历史消息")
         elif history:
             # 使用传入的历史消息
             history_messages = history
@@ -567,6 +579,7 @@ class PresetEngine:
             if last_msg.get("role") == "user" and last_msg.get("content") == message:
                 # 去掉最后一条，避免重复
                 history_messages = history_messages[:-1]
+                self.logger.info(f"[PresetEngine] 移除重复的当前消息")
         
         # 添加历史消息到状态
         for msg in history_messages:
@@ -574,6 +587,9 @@ class PresetEngine:
                 state["messages"].append(HumanMessage(content=msg.get("content", "")))
             elif msg.get("role") == "assistant":
                 state["messages"].append(AIMessage(content=msg.get("content", "")))
+        
+        if history_messages:
+            self.logger.info(f"[PresetEngine] 已添加 {len(history_messages)} 条历史消息到上下文")
         
         # 添加当前用户消息
         state["messages"].append(HumanMessage(content=message))
@@ -604,20 +620,19 @@ class PresetEngine:
             self.logger.info(f"[PresetEngine] LangSmith 追踪已启用: {metadata}")
         
         try:
-            self.logger.info(f"[PresetEngine] 开始执行对话: preset={preset_id}, session={session_id}")
+            self.logger.info(f"[PresetEngine] 开始执行对话：preset={preset_id}, session={session_id}")
             
             if stream:
-                # LangGraph 不直接支持流式，这里模拟
-                result = await graph.ainvoke(state, config)
-                # 获取最后一条 AI 消息
-                for msg in reversed(result["messages"]):
-                    if isinstance(msg, AIMessage):
-                        content = msg.content
-                        self.logger.info(f"[PresetEngine] 对话完成，生成 {len(content)} 字符")
-                        # 模拟流式输出
-                        for char in content:
-                            yield char
-                        break
+                # 使用 LangGraph 的 stream_events API 流式输出 token
+                async for event in graph.astream_events(state, config, version="v2"):
+                    # 处理 LLM/ChatModel 的 token 事件
+                    if event["event"] in ["on_llm_stream", "on_chat_model_stream"]:
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk:
+                            content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                            if content:
+                                yield content
+                self.logger.info(f"[PresetEngine] 流式输出结束")
             else:
                 result = await graph.ainvoke(state, config)
                 # 获取最后一条 AI 消息
@@ -629,8 +644,8 @@ class PresetEngine:
                         break
                         
         except Exception as e:
-            error_msg = f"[对话执行错误: {str(e)}]"
-            self.logger.error(f"[PresetEngine] 对话执行失败: {e}", exc_info=True)
+            error_msg = f"[对话执行错误：{str(e)}]"
+            self.logger.error(f"[PresetEngine] 对话执行失败：{e}", exc_info=True)
             yield error_msg
     
     async def get_preset_detail(self, preset_id: str) -> Dict[str, Any]:

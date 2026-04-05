@@ -74,8 +74,12 @@ watch(
 .bot-page {
   height: 100%;
   display: flex;
-  background: var(--bg-primary);
+  background: #f9fafb;
   transition: background-color 0.3s ease;
+}
+
+html.dark .bot-page {
+  background: #1a1a1a;
 }
 
 .main-area {

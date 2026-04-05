@@ -1,9 +1,10 @@
 """
 对话 API
 
-提供对话相关的RESTful接口
+提供对话相关的 RESTful 接口
 """
 
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,6 +24,8 @@ from app.schemas import (
     ResponseBase,
 )
 from app.services import ConversationService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -134,6 +137,8 @@ async def chat_completion_stream(
     # 保存用户消息
     await conv_service.add_message(session_id, "user", request.message)
     
+    logger.info(f"[chat_completion_stream] 请求参数：enable_memory={request.enable_memory}, enable_tools={request.enable_tools}, enable_rag={request.enable_rag}")
+    
     async def event_generator():
         full_response = []
         
@@ -141,7 +146,7 @@ async def chat_completion_stream(
             async for chunk in engine.chat(
                 preset_id=request.preset_id,
                 message=request.message,
-                session_id=session_id,  # 传入session_id用于记忆检索
+                session_id=session_id,  # 传入 session_id 用于记忆检索
                 history=None,  # 优先使用记忆系统
                 stream=True,
                 enable_tools=request.enable_tools,
@@ -154,7 +159,7 @@ async def chat_completion_stream(
                     "data": ChatStreamChunk(content=chunk).model_dump_json()
                 }
             
-            # 保存完整AI回复
+            # 保存完整 AI 回复
             full_text = "".join(full_response)
             await conv_service.add_message(session_id, "assistant", full_text)
             
@@ -165,6 +170,7 @@ async def chat_completion_stream(
             }
         
         except Exception as e:
+            logger.error(f"[chat_completion_stream] 错误：{e}", exc_info=True)
             yield {
                 "event": "error",
                 "data": str(e)
@@ -198,6 +204,8 @@ async def list_conversations(
         skip=skip,
         limit=limit
     )
+    
+    logger.info(f"[list_conversations] 返回 {len(conversations)} 条会话")
     
     return ResponseBase(data=[
         ConversationList(
@@ -238,7 +246,8 @@ async def get_conversation(
             content=msg.get("content", ""),
             name=msg.get("name"),
             tool_calls=msg.get("tool_calls"),
-            tool_call_id=msg.get("tool_call_id")
+            tool_call_id=msg.get("tool_call_id"),
+            timestamp=msg.get("timestamp")
         ) for msg in (conversation.messages or [])
     ]
     
@@ -311,10 +320,11 @@ async def update_conversation(
             content=msg.get("content", ""),
             name=msg.get("name"),
             tool_calls=msg.get("tool_calls"),
-            tool_call_id=msg.get("tool_call_id")
+            tool_call_id=msg.get("tool_call_id"),
+            timestamp=msg.get("timestamp")
         ) for msg in (conversation.messages or [])
     ]
-    
+
     return ResponseBase(data=ConversationDetail(
         id=conversation.id,
         session_id=conversation.session_id,

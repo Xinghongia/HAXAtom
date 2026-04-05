@@ -18,6 +18,7 @@ class Message(BaseModel):
     name: Optional[str] = Field(default=None, description="工具调用时的工具名")
     tool_calls: Optional[List[dict]] = Field(default=None, description="工具调用请求")
     tool_call_id: Optional[str] = Field(default=None, description="工具调用ID")
+    timestamp: Optional[str] = Field(default=None, description="消息时间戳")
 
 
 class ChatRequest(BaseModel):

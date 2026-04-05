@@ -282,11 +282,15 @@ class ConversationService:
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        # 确保 messages 是一个新的列表（避免SQLAlchemy JSON可变性问题）
+        # 确保 messages 是一个新的列表（避免 SQLAlchemy JSON 可变性问题）
         current_messages = list(conversation.messages) if conversation.messages else []
         current_messages.append(message)
         conversation.messages = current_messages
         conversation.message_count = len(conversation.messages)
+        
+        # 添加日志
+        from app.main import logger
+        logger.info(f"[ConversationService] 添加消息到 {session_id}: {role}, 当前共 {conversation.message_count} 条消息")
         
         # 自动根据首条用户消息生成标题
         if auto_generate_title and conversation.title == "新对话" and role == "user":

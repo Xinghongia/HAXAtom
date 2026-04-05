@@ -1,14 +1,11 @@
 /* 浅色模式（默认） */
 :root {
-  /* 背景透明度 */
-  --bg-opacity: 0.92;
-
-  /* 背景色 - 使用更亮的颜色配合透明度 */
-  --bg-primary: rgba(255, 255, 255, var(--bg-opacity));
-  --bg-secondary: rgba(249, 250, 252, var(--bg-opacity));
-  --bg-tertiary: rgba(245, 247, 250, var(--bg-opacity));
-  --bg-hover: rgba(240, 242, 245, var(--bg-opacity));
-  --bg-active: rgba(236, 245, 255, var(--bg-opacity));
+  /* 背景色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f5f7fa;
+  --bg-hover: #f0f2f5;
+  --bg-active: #ecf5ff;
 
   /* 文字色 */
   --text-primary: #303133;
@@ -34,11 +31,11 @@
 /* 深色模式 */
 html.dark {
   /* 背景色 */
-  --bg-primary: rgba(26, 26, 26, var(--bg-opacity));
-  --bg-secondary: rgba(36, 36, 36, var(--bg-opacity));
-  --bg-tertiary: rgba(45, 45, 45, var(--bg-opacity));
-  --bg-hover: rgba(42, 42, 42, calc(var(--bg-opacity) + 0.05));
-  --bg-active: rgba(30, 58, 95, var(--bg-opacity));
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #242424;
+  --bg-tertiary: #2d2d2d;
+  --bg-hover: #2a2a2a;
+  --bg-active: #1e3a5f;
 
   /* 文字色 */
   --text-primary: #e0e0e0;

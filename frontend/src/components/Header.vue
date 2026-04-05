@@ -39,7 +39,14 @@ const showOpacitySlider = ref(false);
 const $t = computed(() => t);
 
 // 当前激活的路由名称
-const currentRouteName = computed(() => route.name as string);
+const currentRouteName = computed(() => {
+  const name = route.name as string;
+  // 如果是 ChatWithSession 路由，也认为是 Chat 页面
+  if (name === "ChatWithSession") {
+    return "Chat";
+  }
+  return name;
+});
 
 // 切换路由
 const switchTab = (tabName: string) => {
@@ -347,7 +354,7 @@ const selectLanguage = (lang: string) => {
 <style scoped>
 .header {
   height: 56px;
-  background: rgba(255, 255, 255, var(--bg-opacity));
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -358,7 +365,7 @@ const selectLanguage = (lang: string) => {
 }
 
 html.dark .header {
-  background: rgba(26, 26, 26, var(--bg-opacity));
+  background: var(--bg-primary);
 }
 
 .header-left {

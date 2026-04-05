@@ -169,6 +169,8 @@ class MemoryService:
         
         # 获取最近的消息
         messages = conversation.messages or []
+        from app.main import logger
+        logger.info(f"[MemoryService] 加载会话 {session_id} 历史：共 {len(messages)} 条消息，返回最近 {min(limit, len(messages))} 条")
         return messages[-limit:] if len(messages) > limit else messages
     
     async def get_formatted_history(

@@ -1,6 +1,6 @@
 /**
  * 对话 API 模块
- * 
+ *
  * 提供对话相关的接口调用
  */
 
@@ -79,21 +79,21 @@ export interface Preset {
  * 发送对话请求（非流式）
  */
 export const sendChatMessage = async (
-  params: ChatRequest
+  params: ChatRequest,
 ): Promise<ApiResponse<ChatResponse>> => {
   return http.post<ApiResponse<ChatResponse>>("/chat/completions", params);
 };
 
 /**
  * 发送对话请求（流式）
- * 
+ *
  * 使用 SSE (Server-Sent Events) 接收流式响应
  */
 export const sendChatMessageStream = async (
   params: ChatRequest,
   onChunk: (chunk: string) => void,
   onComplete: (fullResponse: string, sessionId: string) => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
 ): Promise<void> => {
   const response = await fetch("/api/v1/chat/completions/stream", {
     method: "POST",
@@ -117,6 +117,7 @@ export const sendChatMessageStream = async (
   const decoder = new TextDecoder();
   let fullResponse = "";
   let sessionId = "";
+  let buffer = "";
 
   if (!reader) {
     onError(new Error("无法读取响应流"));
@@ -128,12 +129,16 @@ export const sendChatMessageStream = async (
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n");
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // 保留最后一行可能不完整的数据
 
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
+        const trimmedLine = line.trim();
+
+        // 处理 SSE 格式：data: {...}
+        if (trimmedLine.startsWith("data: ")) {
+          const data = trimmedLine.slice(6).trim();
           if (data === "[DONE]") continue;
 
           try {
@@ -145,8 +150,12 @@ export const sendChatMessageStream = async (
             if (parsed.session_id) {
               sessionId = parsed.session_id;
             }
+            // 检查是否结束
+            if (parsed.is_end === true) {
+              break;
+            }
           } catch (e) {
-            // 忽略解析错误
+            console.warn("解析 SSE 数据失败:", e, data);
           }
         }
       }
@@ -164,31 +173,34 @@ export const sendChatMessageStream = async (
  * 获取会话详情
  */
 export const getConversation = async (
-  sessionId: string
+  sessionId: string,
 ): Promise<ApiResponse<Conversation>> => {
-  return http.get<ApiResponse<Conversation>>(`/chat/conversations/${sessionId}`);
+  return http.get<ApiResponse<Conversation>>(
+    `/chat/conversations/${sessionId}`,
+  );
 };
 
 /**
  * 获取会话列表
  */
-export const listConversations = async (
-  params?: {
-    preset_id?: string;
-    channel_type?: string;
-    skip?: number;
-    limit?: number;
-  }
-): Promise<ApiResponse<Conversation[]>> => {
+export const listConversations = async (params?: {
+  preset_id?: string;
+  channel_type?: string;
+  skip?: number;
+  limit?: number;
+}): Promise<ApiResponse<Conversation[]>> => {
   const queryParams = new URLSearchParams();
   if (params?.preset_id) queryParams.append("preset_id", params.preset_id);
-  if (params?.channel_type) queryParams.append("channel_type", params.channel_type);
-  if (params?.skip !== undefined) queryParams.append("skip", String(params.skip));
-  if (params?.limit !== undefined) queryParams.append("limit", String(params.limit));
+  if (params?.channel_type)
+    queryParams.append("channel_type", params.channel_type);
+  if (params?.skip !== undefined)
+    queryParams.append("skip", String(params.skip));
+  if (params?.limit !== undefined)
+    queryParams.append("limit", String(params.limit));
 
   const query = queryParams.toString();
   return http.get<ApiResponse<Conversation[]>>(
-    `/chat/conversations${query ? `?${query}` : ""}`
+    `/chat/conversations${query ? `?${query}` : ""}`,
   );
 };
 
@@ -196,18 +208,22 @@ export const listConversations = async (
  * 清空会话消息
  */
 export const clearConversation = async (
-  sessionId: string
+  sessionId: string,
 ): Promise<ApiResponse<Conversation>> => {
-  return http.post<ApiResponse<Conversation>>(`/chat/conversations/${sessionId}/clear`);
+  return http.post<ApiResponse<Conversation>>(
+    `/chat/conversations/${sessionId}/clear`,
+  );
 };
 
 /**
  * 删除会话
  */
 export const deleteConversation = async (
-  sessionId: string
+  sessionId: string,
 ): Promise<ApiResponse<{ success: boolean }>> => {
-  return http.delete<ApiResponse<{ success: boolean }>>(`/chat/conversations/${sessionId}`);
+  return http.delete<ApiResponse<{ success: boolean }>>(
+    `/chat/conversations/${sessionId}`,
+  );
 };
 
 /**

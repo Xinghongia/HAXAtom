@@ -31,6 +31,15 @@ const routes: RouteRecordRaw[] = [
       showSidebarToggle: false,
     },
   },
+  {
+    path: "/chat/:sessionId",
+    name: "ChatWithSession",
+    component: () => import("../views/chat/ChatView.vue"),
+    meta: {
+      title: "对话",
+      showSidebarToggle: false,
+    },
+  },
 ];
 
 // 创建路由实例
