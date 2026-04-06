@@ -45,6 +45,10 @@ const currentRouteName = computed(() => {
   if (name === "ChatWithSession") {
     return "Chat";
   }
+  // 如果是 Bot 的子路由（如 BotModel, BotPersonality 等），也认为是 Bot 页面
+  if (name && name.startsWith("Bot")) {
+    return "Bot";
+  }
   return name;
 });
 
@@ -94,8 +98,7 @@ const selectLanguage = (lang: string) => {
           stroke="currentColor"
           stroke-width="2"
         >
-          <path d="M3 12h18M3 6h18M3 18h18" v-if="!sidebarCollapsed" />
-          <path d="M3 6h18M3 12h18M3 18h18" v-else />
+          <path d="M3 6h18M3 12h18M3 18h18" />
         </svg>
       </button>
 
@@ -372,6 +375,7 @@ html.dark .header {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 64px; /* 确保折叠按钮区域宽度固定 */
 }
 
 .sidebar-toggle-btn {
@@ -386,6 +390,7 @@ html.dark .header {
   justify-content: center;
   transition: all 0.2s;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 .sidebar-toggle-btn:hover {

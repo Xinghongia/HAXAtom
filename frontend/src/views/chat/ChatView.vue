@@ -105,6 +105,72 @@ const reportConversation = (sessionId: string) => {
   // TODO: 实现举报功能
 };
 
+// 复制消息内容
+const copyMessageContent = async (content: string) => {
+  try {
+    await navigator.clipboard.writeText(content);
+    // 显示提示
+    showCopyToast();
+  } catch (err) {
+    console.error("复制失败:", err);
+  }
+};
+
+// 复制成功提示
+const showCopyToast = () => {
+  const isDark = document.documentElement.classList.contains("dark");
+  const toast = document.createElement("div");
+  toast.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span>已复制</span>
+  `;
+  toast.style.cssText = `
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${isDark ? "rgba(45, 45, 45, 0.95)" : "rgba(255, 255, 255, 0.95)"};
+    color: ${isDark ? "#e0e0e0" : "#333"};
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    box-shadow: ${isDark ? "0 4px 12px rgba(0, 0, 0, 0.4)" : "0 4px 12px rgba(0, 0, 0, 0.15)"};
+    border: 1px solid ${isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)"};
+    backdrop-filter: blur(8px);
+    animation: toastSlideIn 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+
+  // 添加动画样式
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes toastSlideIn {
+      0% { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(0.95); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    }
+    @keyframes toastSlideOut {
+      0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(0.95); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 2秒后消失
+  setTimeout(() => {
+    toast.style.animation = "toastSlideOut 0.2s ease forwards";
+    setTimeout(() => {
+      toast.remove();
+      style.remove();
+    }, 200);
+  }, 1800);
+};
+
 // 打字机效果
 const displayText = ref("");
 const fullText = "Hello! HAXAtom";
@@ -196,7 +262,17 @@ const loadConversations = async () => {
 };
 
 // 切换对话
-const switchConversation = (sessionId: string) => {
+const switchConversation = (sessionId: string, event?: MouseEvent) => {
+  // 如果点击的是操作按钮或菜单，不切换会话
+  if (event) {
+    const target = event.target as HTMLElement;
+    if (
+      target.closest(".chat-item-actions") ||
+      target.closest(".chat-action-menu")
+    ) {
+      return;
+    }
+  }
   // 关闭操作菜单
   activeActionMenu.value = null;
   // 使用路由跳转
@@ -387,9 +463,12 @@ const sendMessage = async () => {
           scrollToBottom();
         },
         // onComplete - 完成
-        (fullResponse, sessionId) => {
+        async (fullResponse, sessionId) => {
           currentSessionId.value = sessionId;
           isLoading.value = false;
+          // 刷新对话历史并跳转到新会话
+          await loadConversations();
+          await router.push(`/chat/${sessionId}`);
         },
         // onError - 错误
         (error) => {
@@ -415,6 +494,9 @@ const sendMessage = async () => {
       if (response.code === 200) {
         messages.value[aiMessageIndex].content = response.data.content;
         currentSessionId.value = response.data.session_id;
+        // 刷新对话历史并跳转到新会话
+        await loadConversations();
+        router.push(`/chat/${response.data.session_id}`);
       } else {
         messages.value[aiMessageIndex].content =
           "[错误] " + (response.message || "请求失败");
@@ -489,8 +571,13 @@ onMounted(() => {
 // 监听路由变化
 watch(
   () => route.params.sessionId,
-  (newSessionId) => {
-    if (newSessionId) {
+  (newSessionId, oldSessionId) => {
+    // 只有当路由真正变化且不是当前正在聊天的会话时才加载
+    if (
+      newSessionId &&
+      newSessionId !== oldSessionId &&
+      newSessionId !== currentSessionId.value
+    ) {
       loadSessionFromRoute();
     }
   },
@@ -523,9 +610,11 @@ watch(
       <div class="sidebar-content">
         <div
           class="new-chat-btn"
+          :class="{ active: !currentSessionId }"
           @click="
             messages = [];
             currentSessionId = '';
+            router.push('/chat');
           "
         >
           <svg
@@ -548,11 +637,9 @@ watch(
               :key="conv.session_id"
               class="chat-item"
               :class="{ active: currentSessionId === conv.session_id }"
+              @click="switchConversation(conv.session_id, $event)"
             >
-              <div
-                class="chat-item-content"
-                @click="switchConversation(conv.session_id)"
-              >
+              <div class="chat-item-content">
                 <svg
                   class="chat-icon"
                   viewBox="0 0 24 24"
@@ -939,7 +1026,11 @@ watch(
                     {{ formatMessageTime(message.timestamp) }}
                   </span>
                   <div class="message-actions">
-                    <button class="action-btn" title="复制">
+                    <button
+                      class="action-btn"
+                      title="复制"
+                      @click="copyMessageContent(message.content)"
+                    >
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -1224,6 +1315,11 @@ html.dark .sidebar.collapsed {
 .new-chat-btn:hover {
   background: var(--bg-hover);
   color: var(--primary-color);
+}
+
+.new-chat-btn.active {
+  background: var(--primary-color-light, rgba(59, 130, 246, 0.1));
+  color: var(--primary-color, #3b82f6);
 }
 
 .new-chat-btn .icon {
@@ -1577,8 +1673,8 @@ html.dark .sidebar.collapsed {
 }
 
 html.dark .modern-input-container-center {
-  background: #1f2937;
-  border-color: #374151;
+  background: rgb(45, 45, 45);
+  border-color: #4a4a4a;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
@@ -2142,8 +2238,8 @@ html.dark .voice-btn-center:hover {
 }
 
 html.dark .modern-input-container {
-  background: #1f2937;
-  border-color: #374151;
+  background: rgb(45, 45, 45);
+  border-color: #4a4a4a;
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
     0 2px 4px -1px rgba(0, 0, 0, 0.2);
@@ -2527,7 +2623,7 @@ html.dark .message-bubble-user {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0px;
   margin-left: 8px;
 }
 
@@ -2540,11 +2636,11 @@ html.dark .message-bubble-user {
 }
 
 .message-text-assistant :deep(p) {
-  margin-bottom: 20px;
+  margin-bottom: 0px;
 }
 
 .message-text-assistant :deep(p + p) {
-  margin-top: 20px;
+  margin-top: 8px;
 }
 
 .message-text-assistant :deep(ol) {
@@ -2590,6 +2686,68 @@ html.dark .message-bubble-user {
 
 html.dark .message-text-assistant {
   color: #f9fafb;
+}
+
+/* 深色模式代码块背景 */
+html.dark .message-text-assistant :deep(pre.hljs) {
+  background-color: #0d1117 !important;
+}
+
+/* 代码块样式 - 浅色模式背景 */
+.message-text-assistant :deep(pre.hljs) {
+  background-color: rgb(249, 250, 251) !important;
+}
+
+/* 代码块样式 - 给代码添加左边距 */
+.message-text-assistant :deep(pre code) {
+  display: block;
+  padding-left: 16px !important;
+}
+
+/* 深色模式滚动条样式 - 全局 */
+html.dark ::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #1f2937 !important;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563 !important;
+  border-radius: 4px !important;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280 !important;
+}
+
+/* 深色模式滚动条 - 特定容器 */
+html.dark .sidebar-content::-webkit-scrollbar,
+html.dark .chat-main::-webkit-scrollbar,
+html.dark .message-list::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+html.dark .sidebar-content::-webkit-scrollbar-track,
+html.dark .chat-main::-webkit-scrollbar-track,
+html.dark .message-list::-webkit-scrollbar-track {
+  background: #1f2937 !important;
+}
+
+html.dark .sidebar-content::-webkit-scrollbar-thumb,
+html.dark .chat-main::-webkit-scrollbar-thumb,
+html.dark .message-list::-webkit-scrollbar-thumb {
+  background: #4b5563 !important;
+  border-radius: 4px !important;
+}
+
+html.dark .sidebar-content::-webkit-scrollbar-thumb:hover,
+html.dark .chat-main::-webkit-scrollbar-thumb:hover,
+html.dark .message-list::-webkit-scrollbar-thumb:hover {
+  background: #6b7280 !important;
 }
 
 .message-meta {

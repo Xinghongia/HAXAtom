@@ -17,10 +17,117 @@ const routes: RouteRecordRaw[] = [
     path: "/bot",
     name: "Bot",
     component: () => import("../views/bot/BotView.vue"),
+    redirect: "/bot/welcome",
     meta: {
       title: "机器人配置",
       showSidebarToggle: true,
     },
+    children: [
+      {
+        path: "welcome",
+        name: "BotWelcome",
+        component: () => import("../views/bot/pages/WelcomePage.vue"),
+        meta: { title: "欢迎" },
+      },
+      {
+        path: "model",
+        name: "BotModel",
+        component: () => import("../views/bot/pages/ModelProviderView.vue"),
+        meta: { title: "模型提供商" },
+      },
+      {
+        path: "personality",
+        name: "BotPersonality",
+        component: () => import("../views/bot/pages/PersonalityView.vue"),
+        meta: { title: "人格设定" },
+      },
+      // 更多功能菜单（暂未实现页面）
+      // {
+      //   path: "chat-data",
+      //   name: "BotChatData",
+      //   component: () => import("../views/bot/pages/ChatDataPage.vue"),
+      //   meta: { title: "对话数据" },
+      // },
+      // {
+      //   path: "custom-rules",
+      //   name: "BotCustomRules",
+      //   component: () => import("../views/bot/pages/CustomRulesPage.vue"),
+      //   meta: { title: "自定义规则" },
+      // },
+      // {
+      //   path: "future-tasks",
+      //   name: "BotFutureTasks",
+      //   component: () => import("../views/bot/pages/FutureTasksPage.vue"),
+      //   meta: { title: "未来任务" },
+      // },
+      // {
+      //   path: "subagent",
+      //   name: "BotSubAgent",
+      //   component: () => import("../views/bot/pages/SubAgentPage.vue"),
+      //   meta: { title: "SubAgent 编排" },
+      // },
+      // {
+      //   path: "data-stats",
+      //   name: "BotDataStats",
+      //   component: () => import("../views/bot/pages/DataStatsPage.vue"),
+      //   meta: { title: "数据统计" },
+      // },
+      // {
+      //   path: "platform-logs",
+      //   name: "BotPlatformLogs",
+      //   component: () => import("../views/bot/pages/PlatformLogsPage.vue"),
+      //   meta: { title: "平台日志" },
+      // },
+      // {
+      //   path: "tracking",
+      //   name: "BotTracking",
+      //   component: () => import("../views/bot/pages/TrackingPage.vue"),
+      //   meta: { title: "追踪" },
+      // },
+      {
+        path: "knowledge",
+        name: "BotKnowledge",
+        component: () => import("../views/bot/pages/KnowledgeBasePage.vue"),
+        meta: { title: "知识库" },
+      },
+      {
+        path: "preset",
+        name: "BotPreset",
+        component: () => import("../views/bot/pages/PresetPage.vue"),
+        meta: { title: "预设方案" },
+      },
+      // 插件菜单（二级菜单）
+      // {
+      //   path: "astrbot-plugins",
+      //   name: "BotAstrBotPlugins",
+      //   component: () => import("../views/bot/pages/AstrBotPluginsPage.vue"),
+      //   meta: { title: "AstrBot 插件" },
+      // },
+      // {
+      //   path: "plugin-market",
+      //   name: "BotPluginMarket",
+      //   component: () => import("../views/bot/pages/PluginMarketPage.vue"),
+      //   meta: { title: "插件市场" },
+      // },
+      // {
+      //   path: "mcp",
+      //   name: "BotMcp",
+      //   component: () => import("../views/bot/pages/McpPage.vue"),
+      //   meta: { title: "MCP" },
+      // },
+      // {
+      //   path: "skills",
+      //   name: "BotSkills",
+      //   component: () => import("../views/bot/pages/SkillsPage.vue"),
+      //   meta: { title: "Skills" },
+      // },
+      {
+        path: "memory",
+        name: "BotMemory",
+        component: () => import("../views/bot/pages/MemoryConfigPage.vue"),
+        meta: { title: "记忆配置" },
+      },
+    ],
   },
   {
     path: "/chat",

@@ -4,6 +4,8 @@
 提供提示词配置的CRUD接口
 """
 
+import re
+import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -40,7 +42,9 @@ async def list_prompts(
             prompt_id=p.prompt_id,
             prompt_name=p.prompt_name,
             description=p.description,
-            is_active=p.is_active
+            system_prompt=p.system_prompt,
+            is_active=p.is_active,
+            created_at=p.created_at
         ) for p in prompts
     ])
 
@@ -62,20 +66,39 @@ async def get_prompt(
     return ResponseBase(data=PromptConfigInDB.model_validate(prompt))
 
 
+def generate_prompt_id(name: str) -> str:
+    """根据名称生成prompt_id"""
+    # 转换为小写，替换特殊字符为下划线
+    prompt_id = re.sub(r'[^\w\s]', '', name.lower())
+    prompt_id = re.sub(r'\s+', '_', prompt_id)
+    prompt_id = prompt_id[:64]  # 限制长度
+    # 添加随机后缀确保唯一性
+    suffix = uuid.uuid4().hex[:8]
+    return f"{prompt_id}_{suffix}"
+
+
 @router.post("", response_model=ResponseBase[PromptConfigInDB])
 async def create_prompt(
     prompt: PromptConfigCreate,
     db: AsyncSession = Depends(get_db)
 ):
     """创建提示词配置"""
-    # 检查ID是否已存在
+    # 自动生成prompt_id
+    prompt_id = generate_prompt_id(prompt.prompt_name)
+    
+    # 检查ID是否已存在（理论上不太可能，但还是检查一下）
     result = await db.execute(
-        select(PromptConfig).where(PromptConfig.prompt_id == prompt.prompt_id)
+        select(PromptConfig).where(PromptConfig.prompt_id == prompt_id)
     )
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Prompt ID already exists")
+        # 如果冲突，重新生成
+        prompt_id = f"{prompt_id}_{uuid.uuid4().hex[:4]}"
     
-    db_prompt = PromptConfig(**prompt.model_dump())
+    # 创建数据字典并添加prompt_id
+    data = prompt.model_dump()
+    data['prompt_id'] = prompt_id
+    
+    db_prompt = PromptConfig(**data)
     db.add(db_prompt)
     await db.commit()
     await db.refresh(db_prompt)

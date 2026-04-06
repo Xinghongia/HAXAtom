@@ -92,7 +92,7 @@ export const sendChatMessage = async (
 export const sendChatMessageStream = async (
   params: ChatRequest,
   onChunk: (chunk: string) => void,
-  onComplete: (fullResponse: string, sessionId: string) => void,
+  onComplete: (fullResponse: string, sessionId: string) => void | Promise<void>,
   onError: (error: Error) => void,
 ): Promise<void> => {
   const response = await fetch("/api/v1/chat/completions/stream", {
@@ -161,7 +161,7 @@ export const sendChatMessageStream = async (
       }
     }
 
-    onComplete(fullResponse, sessionId);
+    await onComplete(fullResponse, sessionId);
   } catch (error) {
     onError(error instanceof Error ? error : new Error("流式读取失败"));
   } finally {

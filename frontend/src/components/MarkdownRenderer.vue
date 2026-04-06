@@ -3,14 +3,67 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import MarkdownIt from "markdown-it";
-import "highlight.js/styles/github-dark.css";
 import hljs from "highlight.js";
 
 const props = defineProps<{
   content: string;
 }>();
+
+// 当前主题
+const isDarkMode = ref(false);
+
+// 检测主题
+const checkTheme = () => {
+  isDarkMode.value = document.documentElement.classList.contains("dark");
+  loadHighlightTheme();
+};
+
+// 动态加载高亮主题
+const loadHighlightTheme = () => {
+  // 移除旧的主题样式
+  const existingLink = document.getElementById("hljs-theme");
+  if (existingLink) {
+    existingLink.remove();
+  }
+
+  // 创建新的样式链接
+  const link = document.createElement("link");
+  link.id = "hljs-theme";
+  link.rel = "stylesheet";
+  link.href = isDarkMode.value
+    ? "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.css"
+    : "https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.css";
+  document.head.appendChild(link);
+};
+
+// 监听主题变化
+let observer: MutationObserver | null = null;
+
+onMounted(() => {
+  checkTheme();
+
+  // 使用 MutationObserver 监听主题变化
+  observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === "class") {
+        checkTheme();
+      }
+    });
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+});
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect();
+  }
+});
 
 // 配置 markdown-it
 const md = new MarkdownIt({
@@ -173,22 +226,16 @@ const renderedContent = computed(() => {
   overflow: auto;
   font-size: 85%;
   line-height: 1.8;
-  background-color: rgba(0, 0, 0, 0.04) !important;
   border-radius: 8px;
   margin: 20px 0 !important;
   border: 1px solid var(--border-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-html.dark :deep(.markdown-body pre) {
-  background-color: rgba(30, 30, 30, 0.8) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 :deep(.markdown-body pre code) {
-  display: inline;
+  display: block;
   max-width: auto;
-  padding: 0 !important;
+  padding: 0 0 0 16px !important;
   margin: 0;
   overflow: visible;
   line-height: inherit;

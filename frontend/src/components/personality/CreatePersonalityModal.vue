@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { t } from "../../locales";
 import type {
   CreatePromptConfigRequest,
+  UpdatePromptConfigRequest,
   PresetDialogue,
+  PromptConfig,
 } from "../../api/promptConfig";
 
 const props = defineProps<{
   modelValue: boolean;
+  isEdit?: boolean;
+  editData?: PromptConfig | null;
 }>();
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
   (e: "submit", data: CreatePromptConfigRequest): void;
+  (e: "update", data: UpdatePromptConfigRequest): void;
 }>();
 
 // 计算属性替代 visible
@@ -25,7 +30,6 @@ const $t = computed(() => t);
 
 // 表单数据
 const formData = ref<CreatePromptConfigRequest>({
-  prompt_id: "",
   prompt_name: "",
   description: "",
   system_prompt: "",
@@ -50,6 +54,38 @@ const toolSelectionMode = ref<"all" | "custom">("all");
 // 预设对话列表
 const dialogues = ref<PresetDialogue[]>([]);
 
+// 弹窗标题
+const modalTitle = computed(() => {
+  return props.isEdit
+    ? $t.value("personality.editTitle") || "编辑人格"
+    : $t.value("personality.createTitle") || "创建新人格";
+});
+
+// 监听编辑数据变化
+watch(
+  () => props.editData,
+  (newData) => {
+    if (newData && props.isEdit) {
+      formData.value = {
+        prompt_name: newData.prompt_name,
+        description: newData.description || "",
+        system_prompt: newData.system_prompt,
+        variables: newData.variables || [],
+        temperature_override: newData.temperature_override,
+        is_active: newData.is_active,
+        selected_tools: newData.selected_tools || [],
+        use_all_tools: newData.use_all_tools,
+        preset_dialogues: newData.preset_dialogues || [],
+      };
+      dialogues.value = newData.preset_dialogues
+        ? [...newData.preset_dialogues]
+        : [];
+      toolSelectionMode.value = newData.use_all_tools ? "all" : "custom";
+    }
+  },
+  { immediate: true },
+);
+
 // 切换展开状态
 const toggleSection = (section: "tools" | "skills" | "dialogues") => {
   expandedSections.value[section] = !expandedSections.value[section];
@@ -69,13 +105,14 @@ const removeDialogue = (index: number) => {
 // 关闭弹窗
 const closeModal = () => {
   visible.value = false;
-  resetForm();
+  if (!props.isEdit) {
+    resetForm();
+  }
 };
 
 // 重置表单
 const resetForm = () => {
   formData.value = {
-    prompt_id: "",
     prompt_name: "",
     description: "",
     system_prompt: "",
@@ -97,19 +134,26 @@ const handleSubmit = () => {
     (d) => d.content.trim() !== "",
   );
   formData.value.use_all_tools = toolSelectionMode.value === "all";
-  emit("submit", { ...formData.value });
-  closeModal();
-};
 
-// 生成ID
-const generateId = () => {
-  if (formData.value.prompt_name) {
-    formData.value.prompt_id = formData.value.prompt_name
-      .toLowerCase()
-      .replace(/[^\w\s]/g, "")
-      .replace(/\s+/g, "_")
-      .substring(0, 64);
+  if (props.isEdit) {
+    // 编辑模式：只发送有变化的字段
+    const updateData: UpdatePromptConfigRequest = {
+      prompt_name: formData.value.prompt_name,
+      description: formData.value.description,
+      system_prompt: formData.value.system_prompt,
+      variables: formData.value.variables,
+      temperature_override: formData.value.temperature_override,
+      is_active: formData.value.is_active,
+      selected_tools: formData.value.selected_tools,
+      use_all_tools: formData.value.use_all_tools,
+      preset_dialogues: formData.value.preset_dialogues,
+    };
+    emit("update", updateData);
+  } else {
+    // 创建模式
+    emit("submit", { ...formData.value });
   }
+  closeModal();
 };
 </script>
 
@@ -120,7 +164,7 @@ const generateId = () => {
         <!-- 头部 -->
         <div class="modal-header">
           <h2 class="modal-title">
-            {{ $t("personality.createTitle") || "创建新人格" }}
+            {{ modalTitle }}
           </h2>
           <button class="modal-close" @click="closeModal">
             <svg viewBox="0 0 24 24" fill="currentColor">
@@ -150,16 +194,6 @@ const generateId = () => {
           <div class="form-layout">
             <!-- 左侧表单 -->
             <div class="form-left">
-              <!-- 人格 ID -->
-              <div class="form-item">
-                <input
-                  v-model="formData.prompt_id"
-                  type="text"
-                  class="form-input"
-                  :placeholder="$t('personality.promptId') || '人格 ID'"
-                />
-              </div>
-
               <!-- 人格名称 -->
               <div class="form-item">
                 <input
@@ -167,7 +201,6 @@ const generateId = () => {
                   type="text"
                   class="form-input"
                   :placeholder="$t('personality.promptName') || '人格名称'"
-                  @blur="generateId"
                 />
               </div>
 

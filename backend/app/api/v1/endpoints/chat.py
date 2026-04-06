@@ -142,6 +142,12 @@ async def chat_completion_stream(
     async def event_generator():
         full_response = []
         
+        # 首先发送 session_id
+        yield {
+            "event": "message",
+            "data": ChatStreamChunk(content="", session_id=session_id).model_dump_json()
+        }
+        
         try:
             async for chunk in engine.chat(
                 preset_id=request.preset_id,

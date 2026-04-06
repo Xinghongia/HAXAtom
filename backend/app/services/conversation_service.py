@@ -5,8 +5,11 @@
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
+
+# 北京时间时区 (UTC+8)
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -275,11 +278,11 @@ class ConversationService:
         if not conversation:
             raise ValueError(f"Conversation with session_id '{session_id}' not found")
         
-        # 添加消息
+        # 添加消息 (使用北京时间)
         message = {
             "role": role,
             "content": content,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(BEIJING_TZ).isoformat()
         }
         
         # 确保 messages 是一个新的列表（避免 SQLAlchemy JSON 可变性问题）

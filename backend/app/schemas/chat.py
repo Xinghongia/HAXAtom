@@ -46,6 +46,7 @@ class ChatStreamChunk(BaseModel):
     """流式对话块"""
     content: str = Field(..., description="内容块")
     is_end: bool = Field(default=False, description="是否结束")
+    session_id: Optional[str] = Field(default=None, description="会话ID")
 
 
 class ConversationInDB(BaseModel):

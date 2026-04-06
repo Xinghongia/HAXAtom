@@ -25,15 +25,16 @@ export interface PromptConfig {
 
 /** 提示词配置列表项 */
 export interface PromptConfigListItem {
-  prompt_id: string;
+  prompt_id: string; // 用于删除等操作
   prompt_name: string;
   description?: string;
+  system_prompt: string; // 系统提示词
   is_active: boolean;
+  created_at?: string; // 创建时间
 }
 
 /** 创建提示词配置请求 */
 export interface CreatePromptConfigRequest {
-  prompt_id: string;
   prompt_name: string;
   description?: string;
   system_prompt: string;
@@ -71,9 +72,8 @@ export interface ApiResponse<T> {
 export const getPromptConfigList = async (): Promise<
   PromptConfigListItem[]
 > => {
-  const response = await http.get<ApiResponse<PromptConfigListItem[]>>(
-    "/prompt-configs",
-  );
+  const response =
+    await http.get<ApiResponse<PromptConfigListItem[]>>("/prompts");
   return response.data;
 };
 
@@ -84,7 +84,7 @@ export const getPromptConfigDetail = async (
   promptId: string,
 ): Promise<PromptConfig> => {
   const response = await http.get<ApiResponse<PromptConfig>>(
-    `/prompt-configs/${promptId}`,
+    `/prompts/${promptId}`,
   );
   return response.data;
 };
@@ -95,10 +95,7 @@ export const getPromptConfigDetail = async (
 export const createPromptConfig = async (
   data: CreatePromptConfigRequest,
 ): Promise<PromptConfig> => {
-  const response = await http.post<ApiResponse<PromptConfig>>(
-    "/prompt-configs",
-    data,
-  );
+  const response = await http.post<ApiResponse<PromptConfig>>("/prompts", data);
   return response.data;
 };
 
@@ -110,7 +107,7 @@ export const updatePromptConfig = async (
   data: UpdatePromptConfigRequest,
 ): Promise<PromptConfig> => {
   const response = await http.put<ApiResponse<PromptConfig>>(
-    `/prompt-configs/${promptId}`,
+    `/prompts/${promptId}`,
     data,
   );
   return response.data;
@@ -120,5 +117,5 @@ export const updatePromptConfig = async (
  * 删除提示词配置
  */
 export const deletePromptConfig = async (promptId: string): Promise<void> => {
-  await http.delete<ApiResponse<void>>(`/prompt-configs/${promptId}`);
+  await http.delete<ApiResponse<void>>(`/prompts/${promptId}`);
 };

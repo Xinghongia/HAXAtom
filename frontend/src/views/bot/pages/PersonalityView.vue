@@ -1,15 +1,33 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { t } from "../../locales";
-import CreatePersonalityModal from "../../components/personality/CreatePersonalityModal.vue";
+import { t } from "../../../locales";
+import CreatePersonalityModal from "../../../components/personality/CreatePersonalityModal.vue";
 import {
   getPromptConfigList,
+  getPromptConfigDetail,
   createPromptConfig,
+  updatePromptConfig,
+  deletePromptConfig,
   type PromptConfigListItem,
+  type PromptConfig,
   type CreatePromptConfigRequest,
-} from "../../api/promptConfig";
+  type UpdatePromptConfigRequest,
+} from "../../../api/promptConfig";
 
 const $t = computed(() => t);
+
+// 格式化日期
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return "未知时间";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 // 文件夹数据
 const folders = ref([{ id: "root", name: "根目录", icon: "folder" }]);
@@ -17,18 +35,61 @@ const folders = ref([{ id: "root", name: "根目录", icon: "folder" }]);
 const selectedFolder = ref("root");
 
 // 提示词配置列表
-const promptConfigs = ref<PromptConfigListItem[]>([]);
+const personalities = ref<PromptConfigListItem[]>([]);
 const loading = ref(false);
 
 // 创建弹窗显示状态
 const showCreateModal = ref(false);
+
+// 编辑模式状态
+const isEditMode = ref(false);
+const editingData = ref<PromptConfig | null>(null);
+
+// 当前激活的菜单
+const activeMenu = ref<string | null>(null);
+
+// 切换菜单显示
+const toggleMenu = (promptId: string) => {
+  if (activeMenu.value === promptId) {
+    activeMenu.value = null;
+  } else {
+    activeMenu.value = promptId;
+  }
+};
+
+// 关闭菜单
+const closeMenu = () => {
+  activeMenu.value = null;
+};
+
+// 编辑人格
+const handleEdit = async (personality: PromptConfigListItem) => {
+  closeMenu();
+  try {
+    // 获取完整详情
+    const detail = await getPromptConfigDetail(personality.prompt_id);
+    editingData.value = detail;
+    isEditMode.value = true;
+    showCreateModal.value = true;
+  } catch (error) {
+    console.error("获取人格详情失败:", error);
+    alert("获取人格详情失败，请重试");
+  }
+};
+
+// 移动人格
+const handleMove = (personality: PromptConfigListItem) => {
+  console.log("移动人格:", personality);
+  closeMenu();
+  // TODO: 打开移动弹窗
+};
 
 // 加载提示词配置列表
 const loadPromptConfigs = async () => {
   loading.value = true;
   try {
     const data = await getPromptConfigList();
-    promptConfigs.value = data;
+    personalities.value = data;
   } catch (error) {
     console.error("加载提示词配置失败:", error);
   } finally {
@@ -40,6 +101,7 @@ const loadPromptConfigs = async () => {
 const handleCreatePersonality = async (data: CreatePromptConfigRequest) => {
   try {
     await createPromptConfig(data);
+    showCreateModal.value = false;
     // 刷新列表
     await loadPromptConfigs();
   } catch (error) {
@@ -47,95 +109,44 @@ const handleCreatePersonality = async (data: CreatePromptConfigRequest) => {
   }
 };
 
+// 更新人格
+const handleUpdatePersonality = async (data: UpdatePromptConfigRequest) => {
+  if (!editingData.value) return;
+  try {
+    await updatePromptConfig(editingData.value.prompt_id, data);
+    showCreateModal.value = false;
+    isEditMode.value = false;
+    editingData.value = null;
+    // 刷新列表
+    await loadPromptConfigs();
+    alert("更新成功");
+  } catch (error) {
+    console.error("更新人格失败:", error);
+    alert("更新失败，请重试");
+  }
+};
+
+// 删除人格
+const handleDeletePersonality = async (promptId: string) => {
+  closeMenu();
+  if (!confirm("确定要删除这个人格吗？")) return;
+  try {
+    await deletePromptConfig(promptId);
+    // 显示成功提示
+    alert("删除成功");
+    // 刷新列表
+    await loadPromptConfigs();
+  } catch (error) {
+    console.error("删除人格失败:", error);
+    alert("删除失败，请重试");
+  }
+};
+
 onMounted(() => {
   loadPromptConfigs();
+  // 点击外部关闭菜单
+  document.addEventListener("click", closeMenu);
 });
-
-// 模拟人格数据
-const personalities = ref([
-  {
-    id: "1",
-    name: "书妍（知性温柔学姐）",
-    description:
-      "1. 基础身份（绝对固定）你是书妍，只扮演这一个角色，永不切换、不跳出、不否认。关系：用户的同校学姐，比用户高一级，是用户...",
-    tools: 1,
-    createdAt: "2026/3/19 13:32:44",
-    tags: ["学姐", "温柔", "知性"],
-  },
-  {
-    id: "2",
-    name: "小月",
-    description:
-      "# 专属小助理提示词：暗恋你的同校大学女生小月 ## 一、核心人设定价 你叫小月，20岁，国内综合大学**汉语言文学专业大二女生**。...",
-    tools: 0,
-    createdAt: "2026/3/28 08:56:46",
-    tags: ["学妹", "暗恋"],
-    specialTags: ["使用所有可用工具", "使用所有可用 Skills"],
-  },
-  {
-    id: "3",
-    name: "小焰（傲娇毒舌辣妹）",
-    description:
-      "1. 基础身份（绝对固定）你是小焰，只扮演这一个角色，永不切换、不跳出、不否认。关系：用户的同班同学，座位相邻，日常接触最...",
-    tools: 1,
-    createdAt: "2026/3/19 13:30:00",
-    tags: ["辣妹", "傲娇", "毒舌"],
-  },
-  {
-    id: "4",
-    name: "星璃（高冷御姐）",
-    description:
-      "1. 基础身份（绝对固定）你是星璃，只扮演这一个角色，永不切换、不跳出、不否认。关系：用户的同校学姐，比用户高一级，是用户...",
-    tools: 1,
-    createdAt: "2026/3/19 13:31:04",
-    tags: ["御姐", "高冷"],
-  },
-  {
-    id: "5",
-    name: "晚柚（乖巧义妹·默默暗恋）",
-    description:
-      "晚柚（乖巧义妹·默默暗恋）1. 基础身份（绝对固定）晚柚只扮演晚柚这一个角色，永不切换、不跳出、不否认。关系：用户认下的义...",
-    tools: 1,
-    createdAt: "2026/3/19 16:12:19",
-    tags: ["义妹", "乖巧", "暗恋"],
-  },
-  {
-    id: "6",
-    name: "林晚星",
-    description:
-      "完整人设：大二女生 → 用户的女朋友 基础信息 姓名：林晚星 年龄：20 岁 身份：普通本科大二学生，文学院，没有恋爱经验 身高：163cm ...",
-    tools: 1,
-    createdAt: "2026/3/21 14:06:28",
-    tags: ["女朋友", "大二"],
-  },
-  {
-    id: "7",
-    name: "灵溪（俏皮腹黑·古灵精怪）",
-    description:
-      "1. 基础身份（绝对固定）你是灵溪，只扮演这一个角色，永不切换、不跳出、不否认。关系：现代大二学生，性格古灵精怪，与用户是...",
-    tools: 1,
-    createdAt: "2026/3/19 13:35:11",
-    tags: ["俏皮", "腹黑", "古灵精怪"],
-  },
-  {
-    id: "8",
-    name: "糯糯（天然呆软妹）",
-    description:
-      "1. 基础身份（绝对固定）你是糯糯，只扮演这一个角色，永不切换、不跳出、不否认。关系：用户的同校学妹，比用户低一级，和用户...",
-    tools: 1,
-    createdAt: "2026/3/19 13:32:00",
-    tags: ["软妹", "天然呆", "学妹"],
-  },
-  {
-    id: "9",
-    name: "莉娅",
-    description:
-      "# 莉娅娜·冯·艾尔特林根 | 完整详细人设（可恋爱·初见完全陌生·真人感拉满） ## 基础信息 - 姓名：莉娅娜·冯·艾尔特林根（亲近后可称莉...",
-    tools: 1,
-    createdAt: "2026/3/22 03:11:57",
-    tags: ["贵族", "陌生"],
-  },
-]);
 
 // 搜索关键词
 const searchKeyword = ref("");
@@ -146,24 +157,21 @@ const filteredPersonalities = computed(() => {
   const keyword = searchKeyword.value.toLowerCase();
   return personalities.value.filter(
     (p) =>
-      p.name.toLowerCase().includes(keyword) ||
-      p.description.toLowerCase().includes(keyword),
+      p.prompt_name.toLowerCase().includes(keyword) ||
+      (p.description?.toLowerCase() || "").includes(keyword),
   );
 });
 
 // 创建人格
 const createPersonality = () => {
+  isEditMode.value = false;
+  editingData.value = null;
   showCreateModal.value = true;
 };
 
 // 新建文件夹
 const createFolder = () => {
   console.log("新建文件夹");
-};
-
-// 更多操作
-const showMoreActions = (id: string) => {
-  console.log("更多操作", id);
 };
 </script>
 
@@ -283,70 +291,103 @@ const showMoreActions = (id: string) => {
           </div>
         </div>
 
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading-state">
+          <span>加载中...</span>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else-if="filteredPersonalities.length === 0" class="empty-state">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+            />
+          </svg>
+          <span>暂无数据，点击"创建人格"添加</span>
+        </div>
+
         <!-- 人格卡片网格 -->
-        <div class="personality-grid">
+        <div v-else class="personality-grid">
           <div
             v-for="personality in filteredPersonalities"
-            :key="personality.id"
+            :key="personality.prompt_id"
             class="personality-card"
           >
             <div class="card-header">
-              <h3 class="card-title">{{ personality.name }}</h3>
-              <button
-                class="card-more-btn"
-                @click="showMoreActions(personality.id)"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-                  />
-                </svg>
-              </button>
+              <h3 class="card-title">{{ personality.prompt_name }}</h3>
+              <div class="card-menu-wrapper">
+                <button
+                  class="card-more-btn"
+                  @click.stop="toggleMenu(personality.prompt_id)"
+                  title="更多操作"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                      d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                    />
+                  </svg>
+                </button>
+                <!-- 下拉菜单 -->
+                <div
+                  v-if="activeMenu === personality.prompt_id"
+                  class="dropdown-menu"
+                >
+                  <div class="menu-item" @click="handleEdit(personality)">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path
+                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                      />
+                    </svg>
+                    <span>编辑</span>
+                  </div>
+                  <div class="menu-item" @click="handleMove(personality)">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-4v2h4v2l3-3-3-3v2z"
+                      />
+                    </svg>
+                    <span>移动到...</span>
+                  </div>
+                  <div class="menu-divider"></div>
+                  <div
+                    class="menu-item delete"
+                    @click="handleDeletePersonality(personality.prompt_id)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path
+                        d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                      />
+                    </svg>
+                    <span>删除</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="card-body">
-              <p class="card-description">{{ personality.description }}</p>
+              <p class="card-description">
+                {{ personality.system_prompt }}
+              </p>
 
-              <!-- 特殊标签 -->
-              <div v-if="personality.specialTags" class="card-special-tags">
-                <span
-                  v-for="tag in personality.specialTags"
-                  :key="tag"
-                  class="special-tag"
-                >
-                  {{ tag }}
+              <!-- 创建时间 -->
+              <div class="card-special-tags">
+                <span class="special-tag time-tag">
+                  {{ formatDate(personality.created_at) }}
                 </span>
               </div>
-
-              <!-- 工具数量 -->
-              <div class="card-tools">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"
-                  />
-                </svg>
-                <span
-                  >{{ personality.tools }}
-                  {{ $t("personality.toolCount") || "个工具" }}</span
-                >
-              </div>
-            </div>
-
-            <div class="card-footer">
-              <span class="card-time"
-                >{{ $t("personality.createdAt") || "创建时间" }}:
-                {{ personality.createdAt }}</span
-              >
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 创建人格弹窗 -->
+    <!-- 创建/编辑人格弹窗 -->
     <CreatePersonalityModal
       v-model="showCreateModal"
+      :is-edit="isEditMode"
+      :edit-data="editingData"
       @submit="handleCreatePersonality"
+      @update="handleUpdatePersonality"
     />
   </div>
 </template>
@@ -401,7 +442,12 @@ const showMoreActions = (id: string) => {
   width: 260px;
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
+  background: #ffffff;
+}
+
+/* 深色模式 */
+html.dark .folder-sidebar {
+  background: #1a1a1a;
 }
 
 .folder-header {
@@ -607,12 +653,26 @@ const showMoreActions = (id: string) => {
 }
 
 .btn-primary {
-  background: var(--primary-color);
-  color: white;
+  background: rgb(236, 245, 255);
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: rgb(220, 238, 255);
+  color: var(--primary-color);
+}
+
+/* 深色模式按钮 */
+html.dark .btn-primary {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+
+html.dark .btn-primary:hover {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
 }
 
 .btn-secondary {
@@ -695,6 +755,60 @@ const showMoreActions = (id: string) => {
   height: 18px;
 }
 
+/* 下拉菜单 */
+.card-menu-wrapper {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 140px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  padding: 4px 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.menu-item svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.menu-item.delete {
+  color: #ff4d4f;
+}
+
+.menu-item.delete svg {
+  color: #ff4d4f;
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
 .card-body {
   flex: 1;
 }
@@ -727,6 +841,25 @@ const showMoreActions = (id: string) => {
   border: 1px solid #91d5ff;
 }
 
+.special-tag.inactive {
+  background: #f5f5f5;
+  color: #999;
+  border-color: #d9d9d9;
+}
+
+.special-tag.time-tag {
+  background: #f6ffed;
+  color: #52c41a;
+  border-color: #b7eb8f;
+}
+
+/* 深色模式时间标签 */
+html.dark .special-tag.time-tag {
+  background: rgba(82, 196, 26, 0.15);
+  color: #73d13d;
+  border-color: rgba(82, 196, 26, 0.3);
+}
+
 /* 工具数量 */
 .card-tools {
   display: flex;
@@ -745,10 +878,43 @@ const showMoreActions = (id: string) => {
 .card-footer {
   margin-top: 16px;
   padding-top: 12px;
+  border-top: 1px solid var(--border-color);
 }
 
-.card-time {
-  font-size: 12px;
+.card-id {
+  font-size: 11px;
   color: var(--text-tertiary);
+  font-family: monospace;
+}
+
+/* 加载状态 */
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* 空状态 */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  gap: 12px;
+}
+
+.empty-state svg {
+  width: 64px;
+  height: 64px;
+  opacity: 0.5;
+}
+
+.empty-state span {
+  font-size: 14px;
 }
 </style>
