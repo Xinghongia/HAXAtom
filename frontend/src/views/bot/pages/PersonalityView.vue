@@ -67,8 +67,8 @@ const handleEdit = async (personality: PromptConfigListItem) => {
   closeMenu();
   try {
     // 获取完整详情
-    const detail = await getPromptConfigDetail(personality.prompt_id);
-    editingData.value = detail;
+    const response = await getPromptConfigDetail(personality.prompt_id);
+    editingData.value = response.data;
     isEditMode.value = true;
     showCreateModal.value = true;
   } catch (error) {
@@ -88,8 +88,8 @@ const handleMove = (personality: PromptConfigListItem) => {
 const loadPromptConfigs = async () => {
   loading.value = true;
   try {
-    const data = await getPromptConfigList();
-    personalities.value = data;
+    const response = await getPromptConfigList();
+    personalities.value = response.data;
   } catch (error) {
     console.error("加载提示词配置失败:", error);
   } finally {

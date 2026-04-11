@@ -54,13 +54,8 @@ async def list_presets(
     preset_list_items = []
     for p in presets:
         # 查询模型名称
-        model_name = None
-        if p.selected_model:
-            model_result = await db.execute(
-                select(ModelConfig.model_name).where(ModelConfig.model_id == p.selected_model)
-            )
-            model_name_list = model_result.scalar_one_or_none()
-            model_name = model_name_list[0] if model_name_list else p.selected_model
+        # 现在selected_model存储的是具体模型名称，直接使用即可
+        model_name = p.selected_model if p.selected_model else None
         
         # 查询提示词名称
         prompt_name = None
@@ -140,8 +135,10 @@ async def get_preset(
     # 2. 原子化查询模型信息
     model_info = None
     if preset.selected_model:
+        # 现在selected_model存储的是具体模型名称（如"glm-4"），需要在ModelConfig.model_name数组中查找
+        # 使用contains方法检查JSON数组是否包含指定值
         model_result = await db.execute(
-            select(ModelConfig).where(ModelConfig.model_id == preset.selected_model)
+            select(ModelConfig).where(ModelConfig.model_name.contains([preset.selected_model]))
         )
         model = model_result.scalar_one_or_none()
         if model:

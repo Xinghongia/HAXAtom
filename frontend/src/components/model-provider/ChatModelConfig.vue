@@ -716,6 +716,11 @@ const deleteProvider = async (providerId: string) => {
   position: relative;
 }
 
+/* 浅色模式下使用纯白色背景 */
+:root:not(.dark) .provider-list-section {
+  background: #ffffff;
+}
+
 /* 新增提供商选择面板 */
 .add-provider-panel {
   position: absolute;
@@ -1082,6 +1087,11 @@ const deleteProvider = async (providerId: string) => {
   overflow-y: auto;
 }
 
+/* 浅色模式下使用纯白色背景 */
+:root:not(.dark) .provider-detail {
+  background: #ffffff;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1118,6 +1128,11 @@ const deleteProvider = async (providerId: string) => {
 /* 配置表单 */
 .config-form {
   height: 100%;
+}
+
+/* 浅色模式下使用纯白色背景 */
+:root:not(.dark) .config-form {
+  background: #ffffff;
 }
 
 .form-header {

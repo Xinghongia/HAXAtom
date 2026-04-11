@@ -152,13 +152,25 @@ class PresetEngine:
         
         # 1. 校验模型
         if preset.selected_model:
+            # 查找所有活跃的模型配置
             result = await self.db.execute(
                 select(ModelConfig).where(
-                    ModelConfig.model_id == preset.selected_model,
                     ModelConfig.is_active == True
                 )
             )
-            if not result.scalar_one_or_none():
+            model_configs = result.scalars().all()
+            
+            # 检查是否有模型配置包含该模型名称
+            found = False
+            for config in model_configs:
+                if isinstance(config.model_name, list) and preset.selected_model in config.model_name:
+                    found = True
+                    break
+                elif config.model_name == preset.selected_model:
+                    found = True
+                    break
+            
+            if not found:
                 errors.append(f"模型 '{preset.selected_model}' 不存在或未激活")
         else:
             errors.append("预设方案未配置模型")
@@ -217,31 +229,39 @@ class PresetEngine:
         
         self.logger.info(f"[PresetEngine] 资源校验通过: {preset.preset_id}")
     
-    async def get_model(self, model_id: str) -> BaseChatModel:
+    async def get_model(self, model_name: str) -> BaseChatModel:
         """获取/创建模型实例（带缓存）"""
-        if model_id in self._model_cache:
-            return self._model_cache[model_id]
+        if model_name in self._model_cache:
+            return self._model_cache[model_name]
         
+        # 查找所有模型配置
         result = await self.db.execute(
-            select(ModelConfig).where(ModelConfig.model_id == model_id)
+            select(ModelConfig)
         )
-        model_config = result.scalar_one_or_none()
+        model_configs = result.scalars().all()
+        
+        # 查找包含该模型名称的模型配置
+        model_config = None
+        for config in model_configs:
+            if isinstance(config.model_name, list) and model_name in config.model_name:
+                model_config = config
+                break
+            elif config.model_name == model_name:
+                model_config = config
+                break
         
         if not model_config:
-            raise ValueError(f"模型 '{model_id}' 不存在")
+            raise ValueError(f"模型 '{model_name}' 不存在")
         
-        model = self._create_model_instance(model_config)
-        self._model_cache[model_id] = model
+        model = self._create_model_instance(model_config, model_name)
+        self._model_cache[model_name] = model
         
         return model
     
-    def _create_model_instance(self, config: ModelConfig) -> BaseChatModel:
+    def _create_model_instance(self, config: ModelConfig, model_name: str) -> BaseChatModel:
         """根据配置创建模型实例"""
         provider = config.provider
-        # model_name 可能是列表或字符串，取第一个或直接使用
-        model_name = config.model_name
-        if isinstance(model_name, list):
-            model_name = model_name[0] if model_name else ""
+        # 使用传入的模型名称
         params = config.default_params or {}
         
         if provider == "openai":

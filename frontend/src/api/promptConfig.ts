@@ -61,8 +61,8 @@ export interface UpdatePromptConfigRequest {
 
 /** API 响应包装 */
 export interface ApiResponse<T> {
-  code: number;
-  message: string;
+  code?: number;
+  message?: string;
   data: T;
 }
 
@@ -70,11 +70,11 @@ export interface ApiResponse<T> {
  * 获取提示词配置列表
  */
 export const getPromptConfigList = async (): Promise<
-  PromptConfigListItem[]
+  ApiResponse<PromptConfigListItem[]>
 > => {
   const response =
     await http.get<ApiResponse<PromptConfigListItem[]>>("/prompts");
-  return response.data;
+  return response;
 };
 
 /**
@@ -82,11 +82,11 @@ export const getPromptConfigList = async (): Promise<
  */
 export const getPromptConfigDetail = async (
   promptId: string,
-): Promise<PromptConfig> => {
+): Promise<ApiResponse<PromptConfig>> => {
   const response = await http.get<ApiResponse<PromptConfig>>(
     `/prompts/${promptId}`,
   );
-  return response.data;
+  return response;
 };
 
 /**
@@ -94,9 +94,9 @@ export const getPromptConfigDetail = async (
  */
 export const createPromptConfig = async (
   data: CreatePromptConfigRequest,
-): Promise<PromptConfig> => {
+): Promise<ApiResponse<PromptConfig>> => {
   const response = await http.post<ApiResponse<PromptConfig>>("/prompts", data);
-  return response.data;
+  return response;
 };
 
 /**
@@ -105,17 +105,20 @@ export const createPromptConfig = async (
 export const updatePromptConfig = async (
   promptId: string,
   data: UpdatePromptConfigRequest,
-): Promise<PromptConfig> => {
+): Promise<ApiResponse<PromptConfig>> => {
   const response = await http.put<ApiResponse<PromptConfig>>(
     `/prompts/${promptId}`,
     data,
   );
-  return response.data;
+  return response;
 };
 
 /**
  * 删除提示词配置
  */
-export const deletePromptConfig = async (promptId: string): Promise<void> => {
-  await http.delete<ApiResponse<void>>(`/prompts/${promptId}`);
+export const deletePromptConfig = async (
+  promptId: string,
+): Promise<ApiResponse<void>> => {
+  const response = await http.delete<ApiResponse<void>>(`/prompts/${promptId}`);
+  return response;
 };

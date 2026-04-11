@@ -221,9 +221,13 @@ const getIconSvg = (icon: string) => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  background: var(--bg-secondary);
+  background: #ffffff;
   border-radius: 12px;
   color: var(--text-tertiary);
+}
+
+html.dark .placeholder-content {
+  background: var(--bg-secondary);
 }
 
 .placeholder-icon {

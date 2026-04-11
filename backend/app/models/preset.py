@@ -26,10 +26,11 @@ class Preset(Base):
     preset_name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
-    # 资源引用（外键）
+    # 资源引用
+    # selected_model: 存储具体模型名称（如"glm-4"），而不是ModelConfig的外键
+    # 这样多个预设可以共享同一个模型提供商配置，但选择不同的具体模型
     selected_model: Mapped[str] = mapped_column(
-        String(64), 
-        ForeignKey("model_configs.model_id"),
+        String(128), 
         nullable=False
     )
     selected_prompt: Mapped[Optional[str]] = mapped_column(
@@ -58,7 +59,7 @@ class Preset(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
     # 关系（可选，用于ORM关联查询）
-    model_config: Mapped["ModelConfig"] = relationship("ModelConfig", lazy="selectin")
+    # 注意：selected_model现在存储的是具体模型名称，不再有外键关系
     prompt_config: Mapped[Optional["PromptConfig"]] = relationship("PromptConfig", lazy="selectin")
     memory_config: Mapped[Optional["MemoryConfig"]] = relationship("MemoryConfig", lazy="selectin")
     

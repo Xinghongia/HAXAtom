@@ -77,7 +77,7 @@ class PresetBase(BaseModel):
     description: Optional[str] = Field(default=None)
     
     # 资源引用
-    selected_model: str = Field(..., description="引用的模型ID")
+    selected_model: str = Field(..., description="引用的具体模型名称（如'glm-4'），而不是ModelConfig的ID")
     selected_prompt: Optional[str] = Field(default=None, description="引用的提示词ID")
     selected_memory: Optional[str] = Field(default=None, description="引用的记忆ID")
     selected_plugins: Optional[List[str]] = Field(default_factory=list, description="引用的插件ID列表")

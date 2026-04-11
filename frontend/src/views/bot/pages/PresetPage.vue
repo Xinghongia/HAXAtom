@@ -6,12 +6,22 @@ import {
   deletePreset,
   type PresetListItem,
 } from "../../../api/preset";
+import PresetDetailModal from "../../../components/preset/PresetDetailModal.vue";
+import PresetEditorModal from "../../../components/preset/PresetEditorModal.vue";
 
 const $t = computed(() => t);
 
 const presets = ref<PresetListItem[]>([]);
 const loading = ref(false);
 const searchKeyword = ref("");
+
+// 详情弹窗状态
+const showDetailModal = ref(false);
+const selectedPresetId = ref<string | null>(null);
+
+// 编辑弹窗状态
+const showEditorModal = ref(false);
+const editingPresetId = ref<string | undefined>(undefined);
 
 // 加载预设方案列表
 const loadPresets = async () => {
@@ -35,6 +45,36 @@ const handleDelete = async (presetId: string) => {
   } catch (error) {
     console.error("删除预设方案失败:", error);
   }
+};
+
+// 查看预设详情
+const showPresetDetail = (presetId: string) => {
+  selectedPresetId.value = presetId;
+  showDetailModal.value = true;
+};
+
+// 关闭详情弹窗
+const closeDetailModal = () => {
+  showDetailModal.value = false;
+  selectedPresetId.value = null;
+};
+
+// 打开编辑弹窗（创建或编辑）
+const openEditor = (presetId?: string) => {
+  editingPresetId.value = presetId;
+  showEditorModal.value = true;
+};
+
+// 关闭编辑弹窗
+const closeEditorModal = () => {
+  showEditorModal.value = false;
+  editingPresetId.value = undefined;
+};
+
+// 编辑成功后刷新列表
+const handleEditorSuccess = () => {
+  closeEditorModal();
+  loadPresets();
 };
 
 // 过滤后的预设方案列表
@@ -77,7 +117,7 @@ onMounted(() => {
             placeholder="搜索预设方案..."
           />
         </div>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" @click="openEditor">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
           </svg>
@@ -107,6 +147,7 @@ onMounted(() => {
           :key="preset.preset_id"
           class="preset-card"
           :class="{ 'is-inactive': !preset.is_active }"
+          @click="openEditor(preset.preset_id)"
         >
           <div class="card-header">
             <h3 class="card-title">{{ preset.preset_name }}</h3>
@@ -121,7 +162,7 @@ onMounted(() => {
             <button
               v-if="!preset.is_default"
               class="card-delete-btn"
-              @click="handleDelete(preset.preset_id)"
+              @click.stop="handleDelete(preset.preset_id)"
               title="删除"
             >
               <svg viewBox="0 0 24 24" fill="currentColor">
@@ -172,6 +213,15 @@ onMounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- 预设方案编辑弹窗 -->
+  <PresetEditorModal
+    v-if="showEditorModal"
+    :preset-id="editingPresetId"
+    :is-open="showEditorModal"
+    @close="closeEditorModal"
+    @success="handleEditorSuccess"
+  />
 </template>
 
 <style scoped>
@@ -331,6 +381,7 @@ html.dark .btn-primary:hover {
 .preset-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border-color: var(--primary-color);
+  transform: translateY(-2px);
 }
 
 .preset-card.is-inactive {
