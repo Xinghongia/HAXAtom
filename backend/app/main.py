@@ -104,7 +104,23 @@ async def lifespan(app: FastAPI):
             os.environ["LANGCHAIN_API_KEY"] = settings.langsmith_api_key or ""
             os.environ["LANGCHAIN_PROJECT"] = settings.langsmith_project
             logger.info(f"[LangSmith] Tracing enabled: {settings.langsmith_project}")
-        
+
+        # 启动所有已激活的机器人
+        from app.channels.service import channel_service
+        from app.models import Bot
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as bot_session:
+            result = await bot_session.execute(
+                select(Bot).where(Bot.is_active == True)
+            )
+            active_bots = result.scalars().all()
+            for bot in active_bots:
+                try:
+                    await channel_service.start_bot(bot.bot_id)
+                    logger.info(f"[BOT] Started: {bot.bot_id}")
+                except Exception as bot_err:
+                    logger.warning(f"[BOT] Failed to start {bot.bot_id}: {bot_err}")
+
         logger.info("[OK] HAXAtom started successfully!")
         
     except Exception as e:
@@ -116,6 +132,22 @@ async def lifespan(app: FastAPI):
     # 关闭
     logger.info("[STOP] Shutting down HAXAtom...")
     try:
+        # 停止所有机器人
+        from app.channels.service import channel_service
+        from app.models import Bot
+        from sqlalchemy import select
+        async with AsyncSessionLocal() as bot_session:
+            result = await bot_session.execute(
+                select(Bot).where(Bot.is_active == True)
+            )
+            active_bots = result.scalars().all()
+            for bot in active_bots:
+                try:
+                    await channel_service.stop_bot(bot.bot_id)
+                    logger.info(f"[BOT] Stopped: {bot.bot_id}")
+                except Exception as bot_err:
+                    logger.warning(f"[BOT] Failed to stop {bot.bot_id}: {bot_err}")
+
         await close_db()
         logger.info("[OK] Database connection closed")
     except Exception as e:

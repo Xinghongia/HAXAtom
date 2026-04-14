@@ -78,4 +78,4 @@ class ModelConfigList(BaseModel):
     api_base: Optional[str]
     api_key: Optional[str]
     is_active: bool
-    disabled_models: Optional[List[str]] = None
+    disabled_models: Optional[List[str]] = Field(default_factory=list)

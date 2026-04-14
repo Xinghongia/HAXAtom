@@ -562,13 +562,26 @@ const saveConfig = async () => {
   }
 
   try {
+    // 将响应式 Proxy 转换为普通对象
+    const disabledModelsArray = selectedProvider.value.disabledModels
+      ? [...selectedProvider.value.disabledModels]
+      : [];
+
+    console.log("保存配置前的状态:", {
+      id: selectedProvider.value.id,
+      modelNames: [...selectedProvider.value.modelNames],
+      disabledModels: disabledModelsArray,
+    });
+
     const configData = {
-      model_name: selectedProvider.value.modelNames,
+      model_name: [...selectedProvider.value.modelNames],
       api_base: formData.value.apiBase,
       api_key: formData.value.apiKey,
       is_active: selectedProvider.value.status === "active",
-      disabled_models: selectedProvider.value.disabledModels || [],
+      disabled_models: disabledModelsArray,
     };
+
+    console.log("发送到后端的配置:", configData);
 
     await updateModelConfig(selectedProvider.value.id, configData);
     await loadModelConfigs();

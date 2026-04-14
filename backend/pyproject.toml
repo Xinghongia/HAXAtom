@@ -49,6 +49,9 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 psutil = "^6.0.0"
 
+# QQ机器人 (OneBot v11)
+aiocqhttp = "^1.4.0"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
 pytest-asyncio = "^0.24.0"

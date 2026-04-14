@@ -4,6 +4,15 @@ Pydantic Schema 包
 导出所有 Schema 类
 """
 
+from app.schemas.bot import (
+    BotCreate,
+    BotDetailResponse,
+    BotResponse,
+    BotUpdate,
+    OneBot11ConfigCreate,
+    OneBot11ConfigSchema,
+    OneBot11ConfigUpdate,
+)
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -68,6 +77,14 @@ __all__ = [
     "IDResponse",
     "CountResponse",
     "TimestampMixin",
+    # Bot
+    "BotCreate",
+    "BotUpdate",
+    "BotResponse",
+    "BotDetailResponse",
+    "OneBot11ConfigSchema",
+    "OneBot11ConfigCreate",
+    "OneBot11ConfigUpdate",
     # Model Config
     "ModelParams",
     "ModelConfigCreate",

@@ -6,7 +6,6 @@ import {
   deletePreset,
   type PresetListItem,
 } from "../../../api/preset";
-import PresetDetailModal from "../../../components/preset/PresetDetailModal.vue";
 import PresetEditorModal from "../../../components/preset/PresetEditorModal.vue";
 
 const $t = computed(() => t);
@@ -14,10 +13,6 @@ const $t = computed(() => t);
 const presets = ref<PresetListItem[]>([]);
 const loading = ref(false);
 const searchKeyword = ref("");
-
-// 详情弹窗状态
-const showDetailModal = ref(false);
-const selectedPresetId = ref<string | null>(null);
 
 // 编辑弹窗状态
 const showEditorModal = ref(false);
@@ -45,18 +40,6 @@ const handleDelete = async (presetId: string) => {
   } catch (error) {
     console.error("删除预设方案失败:", error);
   }
-};
-
-// 查看预设详情
-const showPresetDetail = (presetId: string) => {
-  selectedPresetId.value = presetId;
-  showDetailModal.value = true;
-};
-
-// 关闭详情弹窗
-const closeDetailModal = () => {
-  showDetailModal.value = false;
-  selectedPresetId.value = null;
 };
 
 // 打开编辑弹窗（创建或编辑）

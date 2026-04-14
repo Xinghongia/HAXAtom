@@ -7,7 +7,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models import ModelConfig, PromptConfig, Preset, MemoryConfig
+from app.models import Bot, ModelConfig, OneBot11Config, PromptConfig, Preset, MemoryConfig
 from app.db.session import AsyncSessionLocal
 
 
@@ -115,6 +115,31 @@ DEFAULT_PRESETS = [
     }
 ]
 
+# 默认机器人配置
+DEFAULT_BOTS = [
+    {
+        "bot_id": "default_qq_bot",
+        "bot_name": "默认QQ机器人",
+        "channel_type": "onebot11",
+        "preset_id": "default_chat",
+        "is_active": True
+    }
+]
+
+# 默认 OneBot v11 配置
+DEFAULT_ONEBOT11_CONFIGS = [
+    {
+        "bot_id": "default_qq_bot",
+        "listen_host": "0.0.0.0",
+        "listen_port": 6199,
+        "token": None,
+        "message_post_format": "array",
+        "self_message": False,
+        "extra_config": None,
+        "is_active": True
+    }
+]
+
 
 async def init_database():
     """初始化数据库并插入默认数据"""
@@ -177,16 +202,40 @@ async def init_default_data(session: AsyncSession = None):
                 select(Preset).where(Preset.preset_id == preset_data["preset_id"])
             )
             existing = result.scalar_one_or_none()
-            
+
             if not existing:
                 preset = Preset(**preset_data)
                 s.add(preset)
-        
+
+        # 5. 初始化机器人配置
+        for bot_data in DEFAULT_BOTS:
+            result = await s.execute(
+                select(Bot).where(Bot.bot_id == bot_data["bot_id"])
+            )
+            existing = result.scalar_one_or_none()
+
+            if not existing:
+                bot = Bot(**bot_data)
+                s.add(bot)
+
+        # 6. 初始化 OneBot v11 配置
+        for config_data in DEFAULT_ONEBOT11_CONFIGS:
+            result = await s.execute(
+                select(OneBot11Config).where(OneBot11Config.bot_id == config_data["bot_id"])
+            )
+            existing = result.scalar_one_or_none()
+
+            if not existing:
+                config = OneBot11Config(**config_data)
+                s.add(config)
+
         await s.commit()
         print("[OK] 默认模型配置已插入")
         print("[OK] 默认记忆配置已插入")
         print("[OK] 默认提示词配置已插入")
         print("[OK] 默认预设方案已插入")
+        print("[OK] 默认机器人配置已插入")
+        print("[OK] 默认 OneBot v11 配置已插入")
     
     if session is None:
         # 如果没有传入 session，则创建新的

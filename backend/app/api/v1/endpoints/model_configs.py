@@ -277,7 +277,8 @@ async def list_models(
             provider=m.provider,
             api_base=m.api_base,
             api_key=m.api_key,
-            is_active=m.is_active
+            is_active=m.is_active,
+            disabled_models=m.disabled_models or []
         ) for m in models
     ])
 

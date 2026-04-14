@@ -12,6 +12,8 @@ from app.models.knowledge_base import KnowledgeBase, Document
 from app.models.memory_config import MemoryConfig
 from app.models.preset import Preset
 from app.models.conversation import Conversation
+from app.models.bot import Bot
+from app.models.onebot11_config import OneBot11Config
 
 __all__ = [
     "Base",
@@ -23,4 +25,6 @@ __all__ = [
     "MemoryConfig",
     "Preset",
     "Conversation",
+    "Bot",
+    "OneBot11Config",
 ]

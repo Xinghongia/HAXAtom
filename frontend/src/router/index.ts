@@ -41,13 +41,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import("../views/bot/pages/PersonalityView.vue"),
         meta: { title: "人格设定" },
       },
-      // 更多功能菜单（暂未实现页面）
-      // {
-      //   path: "chat-data",
-      //   name: "BotChatData",
-      //   component: () => import("../views/bot/pages/ChatDataPage.vue"),
-      //   meta: { title: "对话数据" },
-      // },
+      // 对话数据页面
+      {
+        path: "chat-data",
+        name: "BotChatData",
+        component: () => import("../views/bot/pages/ChatDataPage.vue"),
+        meta: { title: "对话数据" },
+      },
       // {
       //   path: "custom-rules",
       //   name: "BotCustomRules",

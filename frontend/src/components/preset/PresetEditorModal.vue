@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
+import { ElMessage } from "element-plus";
 import { t } from "../../locales";
 import {
   getPreset,
@@ -86,17 +87,23 @@ const loadModelConfigs = async () => {
     const response = await getModelConfigs("chat");
     modelConfigs.value = response.data || [];
 
-    // 将所有模型扁平化为一个列表（只包含启用的）
+    // 将所有模型扁平化为一个列表（只包含启用的且未被禁用的模型）
     flatModels.value = [];
     for (const config of modelConfigs.value) {
       if (config.is_active) {
         // 只添加启用的模型配置
         for (const model_name of config.model_name) {
-          flatModels.value.push({
-            model_name: model_name,
-            provider: config.provider,
-            is_active: config.is_active,
-          });
+          // 检查模型是否被禁用
+          const isDisabled =
+            config.disabled_models &&
+            config.disabled_models.includes(model_name);
+          if (!isDisabled) {
+            flatModels.value.push({
+              model_name: model_name,
+              provider: config.provider,
+              is_active: config.is_active,
+            });
+          }
         }
       }
     }
@@ -218,12 +225,18 @@ const savePreset = async () => {
       await createPreset(createData);
     }
 
+    // 显示保存成功提示
+    ElMessage.success(props.presetId ? "修改成功" : "创建成功");
+
     emit("success");
-  } catch (err) {
+  } catch (err: any) {
     error.value = props.presetId
       ? $t("bot.preset.updateFailed")
       : $t("bot.preset.createFailed");
     console.error(props.presetId ? "更新预设失败:" : "创建预设失败:", err);
+
+    // 显示错误提示
+    ElMessage.error(err.message || (props.presetId ? "修改失败" : "创建失败"));
   } finally {
     saving.value = false;
   }
@@ -835,28 +848,64 @@ watch(
 
           <!-- 错误提示 -->
           <div v-if="error" class="form-error">{{ error }}</div>
-
-          <!-- 操作按钮 -->
-          <div class="form-actions">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              @click="handleClose"
-            >
-              {{ $t("common.cancel") }}
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="saving">
-              {{
-                saving
-                  ? $t("bot.preset.saving")
-                  : presetId
-                    ? $t("common.save")
-                    : $t("common.create")
-              }}
-            </button>
-          </div>
         </form>
       </div>
+
+      <!-- 保存按钮（固定在右下角） -->
+      <button
+        type="button"
+        class="save-btn"
+        :disabled="saving"
+        @click="savePreset"
+        :title="
+          saving
+            ? $t('bot.preset.saving')
+            : presetId
+              ? $t('common.save')
+              : $t('common.create')
+        "
+      >
+        <svg
+          v-if="!saving"
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+          ></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+        <svg
+          v-else
+          class="spinner"
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="12" y1="2" x2="12" y2="6"></line>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+          <line x1="2" y1="12" x2="6" y2="12"></line>
+          <line x1="18" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -868,14 +917,12 @@ watch(
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 24px;
-  animation: fadeIn 0.2s ease-out;
 }
 
 @keyframes fadeIn {
@@ -899,6 +946,7 @@ watch(
   flex-direction: column;
   overflow: hidden;
   animation: slideUp 0.3s ease-out;
+  position: relative;
 }
 
 @keyframes slideUp {
@@ -914,11 +962,7 @@ watch(
 
 .modal-header {
   padding: 20px 24px;
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.05) 0%,
-    rgba(16, 185, 129, 0.05) 100%
-  );
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -931,10 +975,6 @@ watch(
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
-  background: linear-gradient(135deg, #6366f1 0%, #10b981 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .modal-close {
@@ -976,6 +1016,7 @@ watch(
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+  padding-bottom: 80px;
   background: var(--bg-primary);
 }
 
@@ -1008,38 +1049,17 @@ watch(
   border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--bg-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.section-panel:hover {
-  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.3);
-  transform: translateY(-2px);
 }
 
 .section-header {
   padding: 16px 20px;
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.08) 0%,
-    rgba(16, 185, 129, 0.08) 100%
-  );
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.section-header:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.12) 0%,
-    rgba(16, 185, 129, 0.12) 100%
-  );
 }
 
 .section-header-actions {
@@ -1056,30 +1076,23 @@ watch(
 
 .section-title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
-  letter-spacing: -0.025em;
 }
 
 .section-badge {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 4px 10px;
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  background: var(--primary-color);
   color: white;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-  font-family: "Fira Code", monospace;
-  letter-spacing: 0.5px;
 }
 
 .collapse-icon {
   font-size: 12px;
-  color: #6366f1;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  font-weight: 700;
+  color: var(--text-secondary);
 }
 
 .collapse-icon.rotated {
@@ -1090,9 +1103,6 @@ watch(
   padding: 0;
   max-height: 0;
   overflow: hidden;
-  transition:
-    max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    padding 0.3s ease;
   height: 0;
   background: var(--bg-primary);
 }
@@ -1101,17 +1111,6 @@ watch(
   max-height: 2000px;
   padding: 20px;
   height: auto;
-  border-top: 1px solid transparent;
-  animation: fadeInContent 0.3s ease-out;
-}
-
-@keyframes fadeInContent {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 .form-row {
@@ -1133,9 +1132,8 @@ watch(
 
 .form-group label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
-  letter-spacing: -0.025em;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1145,7 +1143,7 @@ watch(
   content: "";
   width: 3px;
   height: 12px;
-  background: linear-gradient(135deg, #6366f1 0%, #10b981 100%);
+  background: var(--primary-color);
   border-radius: 2px;
 }
 
@@ -1153,28 +1151,19 @@ watch(
 .form-group select,
 .form-group textarea {
   padding: 10px 14px;
-  border: 1.5px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 14px;
   background: var(--bg-primary);
   color: var(--text-primary);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  font-family: "Fira Code", monospace;
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-  transform: translateY(-1px);
-}
-
-.form-group input:hover,
-.form-group select:hover,
-.form-group textarea:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-group input:disabled {
@@ -1187,7 +1176,6 @@ watch(
 .form-group textarea {
   resize: vertical;
   min-height: 100px;
-  font-family: "Fira Code", monospace;
   line-height: 1.6;
 }
 
@@ -1196,7 +1184,6 @@ watch(
   color: #ef4444;
   font-weight: 500;
   padding-left: 6px;
-  animation: shake 0.3s ease-in-out;
 }
 
 @keyframes shake {
@@ -1264,23 +1251,16 @@ watch(
   font-size: 14px;
   color: var(--text-primary);
   word-break: break-all;
-  font-family: "Fira Code", monospace;
 }
 
 .info-value.code {
-  font-family: "Fira Code", monospace;
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.05) 0%,
-    rgba(16, 185, 129, 0.05) 100%
-  );
+  background: var(--bg-secondary);
   padding: 6px 10px;
   border-radius: 6px;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .info-value.system-prompt {
-  font-style: italic;
   color: var(--text-secondary);
   line-height: 1.6;
 }
@@ -1323,12 +1303,11 @@ watch(
   align-items: center;
   padding: 4px 10px;
   margin: 2px;
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  background: var(--primary-color);
   color: white;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+  font-weight: 500;
 }
 
 .knowledge-list,
@@ -1341,21 +1320,9 @@ watch(
 .knowledge-item,
 .plugin-item {
   padding: 14px;
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.03) 0%,
-    rgba(16, 185, 129, 0.03) 100%
-  );
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border: 1px solid rgba(99, 102, 241, 0.1);
-  transition: all 0.2s;
-}
-
-.knowledge-item:hover,
-.plugin-item:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
-  transform: translateX(4px);
+  border: 1px solid var(--border-color);
 }
 
 .knowledge-header,
@@ -1401,16 +1368,11 @@ watch(
 }
 
 code {
-  font-family: "Fira Code", monospace;
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.05) 0%,
-    rgba(16, 185, 129, 0.05) 100%
-  );
+  background: var(--bg-secondary);
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 12px;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .form-actions {
@@ -1422,64 +1384,66 @@ code {
   margin-top: 8px;
 }
 
+/* 保存按钮（固定在右下角） */
+.save-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  transition: transform 0.1s ease;
+}
+
+.save-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.save-btn .spinner {
+  animation: spin 1s linear infinite;
+}
+
 .btn {
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-.btn:hover::before {
-  left: 100%;
 }
 
 .btn-secondary {
   background: var(--bg-secondary);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-hover);
-  border-color: var(--primary-color);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  background: var(--primary-color);
   color: white;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
-  transform: translateY(-2px);
 }
 
 .btn:disabled {
