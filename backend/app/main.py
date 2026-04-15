@@ -47,6 +47,16 @@ def setup_logging():
     # 设置第三方库的日志级别
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+    logging.getLogger("hypercorn").setLevel(logging.WARNING)
+
+    class HeartbeatFilter(logging.Filter):
+        def filter(self, record):
+            return "heartbeat" not in record.getMessage()
+
+    root_logger = logging.getLogger()
+    root_logger.addFilter(HeartbeatFilter())
+    for handler in root_logger.handlers:
+        handler.addFilter(HeartbeatFilter())
 
 
 # 初始化日志

@@ -10,6 +10,17 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+logging.getLogger("aiocqhttp").setLevel(logging.WARNING)
+
+class HeartbeatFilter(logging.Filter):
+    def filter(self, record):
+        return "heartbeat" not in record.getMessage()
+
+root_logger = logging.getLogger()
+root_logger.addFilter(HeartbeatFilter())
+for handler in root_logger.handlers:
+    handler.addFilter(HeartbeatFilter())
+
 from aiocqhttp import CQHttp, Event as AiocqhttpEvent
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -199,13 +210,19 @@ class OneBot11Adapter(ChannelAdapter):
         @self.bot.on("notice")
         async def handle_notice(event: AiocqhttpEvent):
             """处理通知事件"""
-            logger.debug(f"[OneBot11] 收到通知: {event.dict()}")
             return None
 
         @self.bot.on("request")
         async def handle_request(event: AiocqhttpEvent):
             """处理请求事件"""
-            logger.debug(f"[OneBot11] 收到请求: {event.dict()}")
+            return None
+
+        @self.bot.on("meta_event")
+        async def handle_meta_event(event: AiocqhttpEvent):
+            """处理元事件（连接心跳等）"""
+            meta_type = event.get("meta_event_type", "")
+            if meta_type == "lifecycle" and event.get("sub_type") == "connect":
+                logger.info("[OneBot11] NapCat 已连接")
             return None
 
         self._server_task = asyncio.create_task(self.bot.run_task(host=host, port=port))
