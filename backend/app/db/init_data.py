@@ -7,7 +7,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models import Bot, ModelConfig, OneBot11Config, PromptConfig, Preset, MemoryConfig
+from app.models import Bot, ModelConfig, OneBot11Config, PluginConfig, PromptConfig, Preset, MemoryConfig
 from app.db.session import AsyncSessionLocal
 
 
@@ -25,6 +25,22 @@ DEFAULT_MODELS = [
             "top_p": 0.9,
             "max_tokens": 4096
         },
+        "is_active": True
+    }
+]
+
+# 默认插件配置
+DEFAULT_PLUGIN_CONFIGS = [
+    {
+        "plugin_id": "builtin_tools",
+        "plugin_name": "内置工具箱",
+        "class_name": "BuiltinToolsPlugin",
+        "module_path": "app.plugins.builtin.builtin_tools",
+        "source": "builtin",
+        "category": "tool",
+        "icon": "🧰",
+        "tags": ["builtin", "time", "search", "web"],
+        "author": "HAXAtom",
         "is_active": True
     }
 ]
@@ -90,7 +106,7 @@ DEFAULT_PRESETS = [
         "selected_model": "glm-4",
         "selected_prompt": "default_assistant",
         "selected_memory": "default_buffer",
-        "selected_plugins": [],
+        "selected_plugins": ["builtin_tools"],
         "selected_knowledge_bases": [],
         "overrides": {},
         "channel_config": {},
@@ -169,12 +185,23 @@ async def init_default_data(session: AsyncSession = None):
                 select(ModelConfig).where(ModelConfig.model_id == model_data["model_id"])
             )
             existing = result.scalar_one_or_none()
-            
+
             if not existing:
                 model = ModelConfig(**model_data)
                 s.add(model)
-        
-        # 2. 初始化记忆配置
+
+        # 2. 初始化插件配置
+        for plugin_data in DEFAULT_PLUGIN_CONFIGS:
+            result = await s.execute(
+                select(PluginConfig).where(PluginConfig.plugin_id == plugin_data["plugin_id"])
+            )
+            existing = result.scalar_one_or_none()
+
+            if not existing:
+                plugin = PluginConfig(**plugin_data)
+                s.add(plugin)
+
+        # 3. 初始化记忆配置
         for memory_data in DEFAULT_MEMORY_CONFIGS:
             result = await s.execute(
                 select(MemoryConfig).where(MemoryConfig.memory_id == memory_data["memory_id"])
@@ -185,18 +212,18 @@ async def init_default_data(session: AsyncSession = None):
                 memory = MemoryConfig(**memory_data)
                 s.add(memory)
         
-        # 3. 初始化提示词/人格配置
+        # 4. 初始化提示词/人格配置
         for prompt_data in DEFAULT_PROMPT_CONFIGS:
             result = await s.execute(
                 select(PromptConfig).where(PromptConfig.prompt_id == prompt_data["prompt_id"])
             )
             existing = result.scalar_one_or_none()
-            
+
             if not existing:
                 prompt = PromptConfig(**prompt_data)
                 s.add(prompt)
-        
-        # 4. 初始化预设方案
+
+        # 5. 初始化预设方案
         for preset_data in DEFAULT_PRESETS:
             result = await s.execute(
                 select(Preset).where(Preset.preset_id == preset_data["preset_id"])
@@ -207,7 +234,7 @@ async def init_default_data(session: AsyncSession = None):
                 preset = Preset(**preset_data)
                 s.add(preset)
 
-        # 5. 初始化机器人配置
+        # 6. 初始化机器人配置
         for bot_data in DEFAULT_BOTS:
             result = await s.execute(
                 select(Bot).where(Bot.bot_id == bot_data["bot_id"])
@@ -218,7 +245,7 @@ async def init_default_data(session: AsyncSession = None):
                 bot = Bot(**bot_data)
                 s.add(bot)
 
-        # 6. 初始化 OneBot v11 配置
+        # 7. 初始化 OneBot v11 配置
         for config_data in DEFAULT_ONEBOT11_CONFIGS:
             result = await s.execute(
                 select(OneBot11Config).where(OneBot11Config.bot_id == config_data["bot_id"])
@@ -231,6 +258,7 @@ async def init_default_data(session: AsyncSession = None):
 
         await s.commit()
         print("[OK] 默认模型配置已插入")
+        print("[OK] 默认插件配置已插入")
         print("[OK] 默认记忆配置已插入")
         print("[OK] 默认提示词配置已插入")
         print("[OK] 默认预设方案已插入")

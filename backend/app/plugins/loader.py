@@ -43,30 +43,125 @@ class PluginLoader:
     
     def load_builtin_plugins(self) -> List[str]:
         """
-        加载内置插件
-        
+        加载内置插件（app/plugins/builtin/）
+
         Returns:
             List[str]: 成功加载的插件ID列表
         """
         loaded = []
-        
+
         # 内置插件目录
         builtin_dir = Path(__file__).parent / "builtin"
-        
+
         if not builtin_dir.exists():
             print(f"[PluginLoader] Builtin directory not found: {builtin_dir}")
             return loaded
-        
+
         # 加载 builtin 目录下的所有 Python 文件
         for file_path in builtin_dir.glob("*.py"):
             if file_path.name.startswith("_"):
                 continue
-            
+
             plugin_id = self._load_from_file(file_path)
             if plugin_id:
                 loaded.append(plugin_id)
-        
+
         print(f"[PluginLoader] Loaded {len(loaded)} builtin plugins: {loaded}")
+        return loaded
+
+    def load_skills_plugins(self) -> List[str]:
+        """
+        加载用户技能插件（app/plugins/skills/）
+
+        Returns:
+            List[str]: 成功加载的插件ID列表
+        """
+        loaded = []
+
+        skills_dir = Path(__file__).parent / "skills"
+
+        if not skills_dir.exists():
+            print(f"[PluginLoader] Skills directory not found: {skills_dir}")
+            return loaded
+
+        for file_path in skills_dir.glob("*.py"):
+            if file_path.name.startswith("_"):
+                continue
+
+            plugin_id = self._load_from_file(file_path)
+            if plugin_id:
+                loaded.append(plugin_id)
+
+        print(f"[PluginLoader] Loaded {len(loaded)} skills plugins: {loaded}")
+        return loaded
+
+    def load_mcp_plugins(self) -> List[str]:
+        """
+        加载 MCP 服务插件（app/plugins/mcp/）
+
+        Returns:
+            List[str]: 成功加载的插件ID列表
+        """
+        loaded = []
+
+        mcp_dir = Path(__file__).parent / "mcp"
+
+        if not mcp_dir.exists():
+            print(f"[PluginLoader] MCP directory not found: {mcp_dir}")
+            return loaded
+
+        # MCP 目录下可能有 adapters/ 子目录，跳过加载整个目录
+        # 具体的 MCP 适配器应该通过 adapter.py 统一加载
+        for file_path in mcp_dir.glob("*.py"):
+            if file_path.name.startswith("_") or file_path.stem == "adapter":
+                continue
+
+            plugin_id = self._load_from_file(file_path)
+            if plugin_id:
+                loaded.append(plugin_id)
+
+        print(f"[PluginLoader] Loaded {len(loaded)} MCP plugins: {loaded}")
+        return loaded
+
+    def load_all_plugins(self) -> Dict[str, List[str]]:
+        """
+        加载所有类型的插件
+
+        Returns:
+            Dict[str, List[str]]: 各类型插件加载结果
+        """
+        results = {
+            "builtin": self.load_builtin_plugins(),
+            "skill": self.load_skills_plugins(),
+            "mcp": self.load_mcp_plugins(),
+            "community": self.load_community_plugins(),
+        }
+        return results
+
+    def load_community_plugins(self) -> List[str]:
+        """
+        加载社区插件（app/plugins/community/）
+
+        Returns:
+            List[str]: 成功加载的插件ID列表
+        """
+        loaded = []
+
+        community_dir = Path(__file__).parent / "community"
+
+        if not community_dir.exists():
+            print(f"[PluginLoader] Community directory not found: {community_dir}")
+            return loaded
+
+        for file_path in community_dir.glob("*.py"):
+            if file_path.name.startswith("_"):
+                continue
+
+            plugin_id = self._load_from_file(file_path)
+            if plugin_id:
+                loaded.append(plugin_id)
+
+        print(f"[PluginLoader] Loaded {len(loaded)} community plugins: {loaded}")
         return loaded
     
     def load_from_directory(self, directory: str) -> List[str]:

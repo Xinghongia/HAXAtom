@@ -12,9 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.plugins import PluginLoader, registry
-from app.plugins.builtin.calculator_plugin import CalculatorPlugin
-from app.plugins.builtin.search_plugin import SearchPlugin
-from app.plugins.builtin.time_plugin import TimePlugin
+from app.plugins.builtin.builtin_tools import BuiltinToolsPlugin
 from app.schemas import ResponseBase
 
 router = APIRouter()
@@ -27,9 +25,7 @@ def _ensure_builtin_plugins():
     """确保内置插件已加载"""
     global _builtin_plugins_loaded
     if not _builtin_plugins_loaded:
-        registry.register(TimePlugin)
-        registry.register(CalculatorPlugin)
-        registry.register(SearchPlugin)
+        registry.register(BuiltinToolsPlugin)
         _builtin_plugins_loaded = True
 
 
@@ -43,6 +39,7 @@ class PluginInfo(BaseModel):
     category: str
     icon: Optional[str]
     tags: List[str]
+    source: str
     enabled: bool
 
 
@@ -82,6 +79,7 @@ async def list_plugins(
                 category=metadata.category,
                 icon=metadata.icon,
                 tags=metadata.tags,
+                source=metadata.source,
                 enabled=plugin.enabled
             ))
     
@@ -113,6 +111,7 @@ async def get_plugin(
         category=metadata.category,
         icon=metadata.icon,
         tags=metadata.tags,
+        source=metadata.source,
         enabled=plugin.enabled
     ))
 
@@ -125,11 +124,10 @@ async def execute_plugin(
 ):
     """
     执行插件
-    
+
     示例参数：
-    - time: {"format": "datetime"}  # time/date/datetime
-    - calculator: {"expression": "1 + 2 * 3"}
-    - search: {"query": "Python", "limit": 3}
+    - time: {"tool": "time"}
+    - search: {"tool": "search", "query": "Python"}
     """
     _ensure_builtin_plugins()
     

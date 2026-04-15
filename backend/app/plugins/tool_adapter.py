@@ -25,17 +25,21 @@ class PluginToolSchema(BaseModel):
 def create_tool_from_plugin(plugin_id: str) -> Optional[BaseTool]:
     """
     将 HAXAtom 插件转换为 LangChain Tool
-    
+
     Args:
         plugin_id: 插件ID
-        
+
     Returns:
-        Optional[BaseTool]: LangChain Tool 实例，如果插件不存在则返回 None
+        Optional[BaseTool]: LangChain Tool 实例，如果插件不存在或未启用则返回 None
     """
     plugin = registry.get(plugin_id)
     metadata = registry.get_metadata(plugin_id)
-    
+
     if not plugin or not metadata:
+        return None
+
+    # 检查插件是否启用
+    if not plugin.enabled:
         return None
     
     # 创建动态 Tool 类

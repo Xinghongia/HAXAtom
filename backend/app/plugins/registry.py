@@ -154,7 +154,7 @@ class PluginRegistry:
     def get_all_metadata(self) -> Dict[str, PluginMetadata]:
         """
         获取所有插件元数据
-        
+
         Returns:
             Dict[str, PluginMetadata]: 插件ID到元数据的映射
         """
@@ -162,6 +162,66 @@ class PluginRegistry:
             plugin_id: plugin.metadata
             for plugin_id, plugin in self._plugins.items()
         }
+
+    def list_by_source(self, source: str) -> List[str]:
+        """
+        按来源类型获取插件列表
+
+        Args:
+            source: 来源类型 (builtin | skill | mcp | community)
+
+        Returns:
+            List[str]: 该来源的所有插件ID
+        """
+        return [
+            plugin_id
+            for plugin_id, plugin in self._plugins.items()
+            if plugin.metadata.source == source
+        ]
+
+    def list_by_category(self, category: str) -> List[str]:
+        """
+        按功能类别获取插件列表
+
+        Args:
+            category: 功能类别 (tool | search | calculation | general)
+
+        Returns:
+            List[str]: 该类别的所有插件ID
+        """
+        return [
+            plugin_id
+            for plugin_id, plugin in self._plugins.items()
+            if plugin.metadata.category == category
+        ]
+
+    def get_by_source(self, source: str) -> Dict[str, BasePlugin]:
+        """
+        按来源类型获取插件实例
+
+        Args:
+            source: 来源类型 (builtin | skill | mcp | community)
+
+        Returns:
+            Dict[str, BasePlugin]: 该来源的所有插件实例
+        """
+        return {
+            plugin_id: plugin
+            for plugin_id, plugin in self._plugins.items()
+            if plugin.metadata.source == source
+        }
+
+    def get_all_sources(self) -> List[str]:
+        """
+        获取所有来源类型
+
+        Returns:
+            List[str]: 来源类型列表
+        """
+        sources = set()
+        for plugin in self._plugins.values():
+            sources.add(plugin.metadata.source)
+        return sorted(list(sources))
     
     def enable(self, plugin_id: str) -> bool:
         """

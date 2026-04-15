@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 class PluginMetadata:
     """
     插件元数据
-    
+
     描述插件的基本信息
     """
     name: str  # 插件名称
@@ -23,7 +23,18 @@ class PluginMetadata:
     category: str = "general"  # 分类：general/tool/search/calculation等
     icon: Optional[str] = None  # 图标URL或emoji
     tags: List[str] = field(default_factory=list)  # 标签
-    
+
+    # 来源类型: builtin(内置) | skill(用户技能) | mcp(MCP服务) | community(社区)
+    source: str = "builtin"
+
+    # 社区插件专用字段
+    homepage: Optional[str] = None  # 插件主页
+    license: str = "MIT"  # 许可证
+    requirements: List[str] = field(default_factory=list)  # Python 依赖
+
+    # MCP 专用配置
+    mcp_config: Optional[Dict[str, Any]] = None  # MCP 服务器配置
+
     # 配置信息
     config_schema: Optional[Dict[str, Any]] = None  # 配置项JSON Schema
     default_config: Dict[str, Any] = field(default_factory=dict)  # 默认配置
