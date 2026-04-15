@@ -18,7 +18,7 @@ class PluginToolSchema(BaseModel):
     """插件工具参数 Schema"""
     params: Dict[str, Any] = Field(
         default_factory=dict,
-        description="插件执行参数，具体参数取决于插件类型"
+        description="插件执行参数。必须包含 tool 字段指定子工具类型，可选包含其他参数如 query。"
     )
 
 
@@ -108,21 +108,26 @@ def get_tools_for_preset(plugin_ids: list[str]) -> list[BaseTool]:
 def _build_tool_description(metadata) -> str:
     """
     构建工具描述
-    
+
     这个描述会被 LLM 用来决定是否调用该工具
     """
     desc = f"{metadata.description}\n\n"
-    
-    # 获取配置schema（如果是方法则跳过）
-    config_schema = metadata.config_schema
-    if config_schema and not callable(config_schema):
-        desc += "配置参数:\n"
-        desc += json.dumps(config_schema, ensure_ascii=False, indent=2)
-        desc += "\n\n"
-    
+
+    # 针对 builtin_tools 提供更详细的子工具说明
+    if metadata.name == "builtin_tools":
+        desc += "【重要】params 参数结构：\n"
+        desc += "- 查询时间: params = {\"tool\": \"time\"}\n"
+    else:
+        # 获取配置schema（如果是方法则跳过）
+        config_schema = metadata.config_schema
+        if config_schema and not callable(config_schema):
+            desc += "配置参数:\n"
+            desc += json.dumps(config_schema, ensure_ascii=False, indent=2)
+            desc += "\n\n"
+
     desc += f"插件类别: {metadata.category}\n"
     desc += f"标签: {', '.join(metadata.tags)}"
-    
+
     return desc
 
 

@@ -101,12 +101,18 @@ async def lifespan(app: FastAPI):
         # 初始化数据库
         await init_db()
         logger.info("[DB] Database initialized")
-        
+
         # 初始化默认数据
         from app.db.session import AsyncSessionLocal
         async with AsyncSessionLocal() as session:
             await init_default_data(session)
         logger.info("[DB] Default data initialized")
+
+        # 加载插件到注册表
+        from app.plugins.loader import PluginLoader
+        loader = PluginLoader()
+        loaded = loader.load_builtin_plugins()
+        logger.info(f"[PLUGIN] Loaded {len(loaded)} builtin plugins: {loaded}")
         
         # 配置LangSmith
         if settings.langsmith_tracing:

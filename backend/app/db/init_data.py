@@ -75,7 +75,7 @@ DEFAULT_PROMPT_CONFIGS = [
         "prompt_id": "default_assistant",
         "prompt_name": "默认助手",
         "description": "通用的AI助手角色",
-        "system_prompt": "你是一个 helpful 的AI助手，能够回答用户的各种问题。",
+        "system_prompt": "你是一个智能助手，当用户询问实时信息时（如时间、日期、天气等），你应该使用提供的工具来获取实时数据。\n\n可用工具：\n- builtin_tools: 内置工具箱，包含查询北京时间、搜索网络信息等功能。\n\n当用户询问「现在几点了」「今天日期」「搜索xxx」等问题时，直接调用相应工具获取信息并回答。",
         "variables": [],
         "temperature_override": 0.7,
         "is_active": True,

@@ -48,12 +48,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import("../views/bot/pages/ChatDataPage.vue"),
         meta: { title: "对话数据" },
       },
-      // {
-      //   path: "custom-rules",
-      //   name: "BotCustomRules",
-      //   component: () => import("../views/bot/pages/CustomRulesPage.vue"),
-      //   meta: { title: "自定义规则" },
-      // },
+      {
+        path: "bot",
+        name: "BotManagement",
+        component: () => import("../views/bot/pages/BotPage.vue"),
+        meta: { title: "机器人管理" },
+      },
       // {
       //   path: "future-tasks",
       //   name: "BotFutureTasks",
@@ -96,13 +96,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import("../views/bot/pages/PresetPage.vue"),
         meta: { title: "预设方案" },
       },
-      // 插件菜单（二级菜单）
-      // {
-      //   path: "astrbot-plugins",
-      //   name: "BotAstrBotPlugins",
-      //   component: () => import("../views/bot/pages/AstrBotPluginsPage.vue"),
-      //   meta: { title: "AstrBot 插件" },
-      // },
+      {
+        path: "plugins",
+        name: "BotAstrBotPlugins",
+        component: () => import("../views/bot/pages/PluginsPage.vue"),
+        meta: { title: "HAXAtom 插件" },
+      },
       // {
       //   path: "plugin-market",
       //   name: "BotPluginMarket",

@@ -229,49 +229,70 @@ def create_tool_execution_node(tool_engine: ToolEngine):
 def should_continue_to_tools(state: AgentState) -> str:
     """
     条件边：是否应该调用工具
-    
+
     Returns:
         str: "tools" 或 "agent"
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     # 检查步骤限制
     step_count = state.get("step_count", 0)
     max_steps = state.get("max_steps", 10)
-    
+
     if step_count >= max_steps:
         return "agent"  # 超过最大步骤，直接返回给 agent
-    
+
     # 检查最后一条消息
     messages = state.get("messages", [])
     if not messages:
         return "agent"
-    
+
     last_message = messages[-1]
-    
+
     # 如果是 AIMessage 且有 tool_calls，则调用工具
     if isinstance(last_message, AIMessage):
         tool_calls = getattr(last_message, "tool_calls", None)
+        logger.info(f"[should_continue_to_tools] AIMessage tool_calls: {tool_calls}")
         if tool_calls:
             return "tools"
-    
+
+    logger.info(f"[should_continue_to_tools] last_message type: {type(last_message)}, no tool_calls")
     return "agent"
 
 
 def should_continue_after_tools(state: AgentState) -> str:
     """
     条件边：工具执行后是否继续
-    
+
     Returns:
         str: "agent" 或 "end"
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     # 检查是否有错误
     if state.get("error"):
+        logger.info(f"[should_continue_after_tools] 有错误: {state.get('error')}")
         return "agent"  # 有错误，返回给 agent 处理
-    
+
+    # 检查消息
+    messages = state.get("messages", [])
+    logger.info(f"[should_continue_after_tools] messages 数量: {len(messages)}")
+    if messages:
+        last_msg = messages[-1]
+        logger.info(f"[should_continue_after_tools] 最后一条消息 type: {type(last_msg).__name__}")
+        if hasattr(last_msg, 'content'):
+            content = last_msg.content
+            logger.info(f"[should_continue_after_tools] 最后一条消息 content 长度: {len(content) if content else 0}")
+            if content and len(content) < 500:
+                logger.info(f"[should_continue_after_tools] 最后一条消息 content: {content[:500]}")
+
     # 检查步骤限制
     step_count = state.get("step_count", 0)
     max_steps = state.get("max_steps", 10)
-    
+
     if step_count >= max_steps:
         return "end"  # 超过最大步骤，结束
-    
+
     return "agent"  # 返回给 agent 继续处理

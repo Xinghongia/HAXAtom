@@ -320,26 +320,51 @@ class PresetEngine:
         
         return ""
     
-    def _create_agent_node(self, model: BaseChatModel, system_prompt: str, enable_tools: bool = False):
+    def _create_agent_node(self, model: BaseChatModel, system_prompt: str, enable_tools: bool = False, tool_engine=None):
         """创建 Agent 节点"""
+        from app.core.tool_engine import ToolEngine
+
         # 构建提示词模板
         messages = [("system", system_prompt)] if system_prompt else []
         messages.append(("placeholder", "{messages}"))
-        
+
         prompt = ChatPromptTemplate.from_messages(messages)
-        
+
+        # 绑定工具到模型
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if enable_tools and tool_engine and tool_engine.has_tools():
+            tools = tool_engine.get_tools()
+            logger.info(f"[_create_agent_node] Binding {len(tools)} tools to model: {[t.name for t in tools]}")
+            bound_model = model.bind_tools(tools)
+        else:
+            logger.info(f"[_create_agent_node] No tools to bind, enable_tools={enable_tools}, tool_engine={tool_engine}")
+            bound_model = model
+
         # LCEL 链: prompt | model
-        chain = prompt | model
+        chain = prompt | bound_model
         
         async def _agent_node(state: AgentState) -> AgentState:
             """Agent 决策节点"""
+            import logging
+            logger = logging.getLogger(__name__)
+
             try:
                 # 增加步骤计数
                 step_count = state.get("step_count", 0) + 1
-                
+
                 # 调用模型
                 response = await chain.ainvoke({"messages": state["messages"]})
-                
+
+                # 检查是否有 tool_calls
+                tool_calls = getattr(response, "tool_calls", None)
+                logger.info(f"[_agent_node] model response type: {type(response)}, tool_calls: {tool_calls}")
+
+                # 如果有工具调用，打印完整响应
+                if tool_calls:
+                    logger.info(f"[_agent_node] AI 请求调用工具: {tool_calls}")
+
                 # 添加 AI 消息到历史
                 new_messages = list(state["messages"]) + [response]
                 
@@ -476,16 +501,20 @@ class PresetEngine:
             )
             workflow.add_node("retrieval", retrieval_node)
         
-        # 添加 Agent 节点
-        agent_node = self._create_agent_node(model, system_prompt, enable_tools)
-        workflow.add_node("agent", agent_node)
-        
         # 添加工具节点（如果需要）
+        tool_engine = None
+        tool_node = None
         if enable_tools and preset.selected_plugins:
             tool_engine = ToolEngine(self.db, preset.selected_plugins)
             tool_node = tool_engine.create_tool_node()
-            if tool_node:
-                workflow.add_node("tools", tool_node)
+
+        # 添加 Agent 节点（需要绑定工具）
+        agent_node = self._create_agent_node(model, system_prompt, enable_tools, tool_engine)
+        workflow.add_node("agent", agent_node)
+
+        # 添加工具节点（如果需要）
+        if tool_node:
+            workflow.add_node("tools", tool_node)
         
         # 设置入口点
         if enable_rag and preset.selected_knowledge_bases:
